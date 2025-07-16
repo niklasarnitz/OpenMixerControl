@@ -1,0 +1,1 @@
+cp eez/src/ui/*.* .
