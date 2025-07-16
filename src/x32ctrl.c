@@ -11,24 +11,21 @@
 
 #include "x32ctrl.h"
 
-// global variables
-uint8_t timerCounter;
-
+/*
 // called every 50ms
-void timerCallback(int signum) {
-  timerCounter--;
-  if (timerCounter == 0) {
-    timerCounter = 4;
+void timer50msCallback(int signum) {
+}
+*/
 
-    // called every 250ms
-  }
+void timer10msCallback(int sig, siginfo_t *si, void *uc) {
+  // call EEZ-GUI tick
+  ui_tick();
+
+  // reads data from surface and calls surfaceCallback()
+  uartRead();
 }
 
-void initUi() {
-	// TODO: intialize LVGL
-}
-
-void initX32Surface() {
+void surfaceInit() {
 	// set brightness and contrast
     printf("  Setting brightness and contrast for all displays...\n");
     setBrightness(4, 255); // brightness of LEDs
@@ -137,27 +134,29 @@ int main() {
     printf("OpenX32 UserInterface\n");
     printf("v0.0.1, 16.07.2025\n");
     printf("https://github.com/xn--nding-jua/OpenX32\n");
-    initUi();
 
     printf("Connecting to UART1...\n");
     uartOpen();
 
     printf("Initializing X32 Surface...\n");
-    initX32Surface();
+    surfaceInit();
 
+/*
     printf("Start Timer...\n");
-    timerCounter = 4;
     initTimer();
 
     printf("Wait for incoming data on /dev/ttymxc1...\n");
     printf("Press Ctrl+C to terminate program.\n");
-
     while (1) {
       uartRead();
 
       // sleep for 1ms to lower CPU-load
       usleep(1000);
     }
+*/
+
+    printf("Initializing GUI...\n");
+    guiInit(); // initializes LVGL and FBDEV and starts endless loop
 
     return 0;
 }

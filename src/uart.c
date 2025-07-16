@@ -64,13 +64,15 @@ int uartOpen() {
         close(fd);
         return 1;
     }
+
+    return 0;
 }
 
 int uartRead() {
-	uint8_t receivedClass = 0;
+    uint8_t receivedClass = 0;
     uint8_t receivedIndex = 0;
     uint16_t receivedValue = 0;
-    uint8_t receivedChecksum = 0;
+    //uint8_t receivedChecksum = 0;
     uint8_t currentByte;
     uint8_t packet_buffer[MAX_BUFFER_SIZE];
     int packet_buffer_len = 0;
@@ -120,7 +122,7 @@ int uartRead() {
 							receivedClass = packet_buffer[packet_buffer_len - 6];
 							receivedIndex = packet_buffer[packet_buffer_len - 5];
 							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | packet_buffer[packet_buffer_len - 4];
-							receivedChecksum = packet_buffer[packet_buffer_len - 1];
+							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
 							receivedPacketLength = 8;
 						}
 						// check for long 8-bit-packet (7 bytes)
@@ -130,7 +132,7 @@ int uartRead() {
 							receivedClass = packet_buffer[packet_buffer_len - 5];
 							receivedIndex = packet_buffer[packet_buffer_len - 4];
 							receivedValue = packet_buffer[packet_buffer_len - 3];
-							receivedChecksum = packet_buffer[packet_buffer_len - 1];
+							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
 							receivedPacketLength = 7;
 						}
 						// check for short 16-bit-packet (6 bytes)
@@ -140,7 +142,7 @@ int uartRead() {
 							receivedClass = packet_buffer[packet_buffer_len - 6];
 							receivedIndex = packet_buffer[packet_buffer_len - 5];
 							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | packet_buffer[packet_buffer_len - 4];
-							receivedChecksum = packet_buffer[packet_buffer_len - 1];
+							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
 							receivedPacketLength = 8;
 						}
 						// check for short 8-bit-packet (5 bytes)
@@ -150,7 +152,7 @@ int uartRead() {
 							receivedClass = packet_buffer[packet_buffer_len - 5];
 							receivedIndex = packet_buffer[packet_buffer_len - 4];
 							receivedValue = packet_buffer[packet_buffer_len - 3];
-							receivedChecksum = packet_buffer[packet_buffer_len - 1];
+							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
 							receivedPacketLength = 5;
 						}
 
@@ -173,7 +175,7 @@ int uartRead() {
 						  printf("Warnung: verbleibende Bytes im Puffer: %d\n", packet_buffer_len);
 						}
 						*/
-						
+
 						// shift remaining bytes byte by processed amount of data
 						memmove(packet_buffer, packet_buffer + receivedPacketLength, packet_buffer_len - receivedPacketLength);
 						packet_buffer_len -= receivedPacketLength;
@@ -183,4 +185,6 @@ int uartRead() {
 			fflush(stdout);
 		}
 	}
+
+	return 0;
 }

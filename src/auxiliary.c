@@ -1,5 +1,6 @@
 #include "auxiliary.h"
 
+/*
 // variables
 timer_t timerid;
 struct sigevent sev;
@@ -41,4 +42,4 @@ int initTimer() {
     return 1;
   }
 }
-
+*/
