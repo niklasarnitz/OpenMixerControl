@@ -123,6 +123,9 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint8_t valu
           case 8: // faderBoard right
             break;
       }
+
+      // inform LVGL about this new button-press
+      guiNewButtonPress(((uint16_t)boardId << 8) + index, value > 0);
   }else if (class == 'e') {
       printf("Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
   }
