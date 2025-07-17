@@ -45,6 +45,6 @@
 //void timer50Callback(int signum);
 void timer10msCallback(int sig, siginfo_t *si, void *uc);
 void surfaceInit();
-void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint8_t value);
+void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t value);
 
 #endif

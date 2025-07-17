@@ -121,7 +121,7 @@ int uartRead() {
 							receivedBoardId = packet_buffer[packet_buffer_len - 7] & 0x7F;
 							receivedClass = packet_buffer[packet_buffer_len - 6];
 							receivedIndex = packet_buffer[packet_buffer_len - 5];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | packet_buffer[packet_buffer_len - 4];
+							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
 							receivedPacketLength = 8;
 						}
@@ -141,9 +141,9 @@ int uartRead() {
 							// 0xFE and BoardID is missing here
 							receivedClass = packet_buffer[packet_buffer_len - 6];
 							receivedIndex = packet_buffer[packet_buffer_len - 5];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | packet_buffer[packet_buffer_len - 4];
+							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 8;
+							receivedPacketLength = 6;
 						}
 						// check for short 8-bit-packet (5 bytes)
 						// ID Value_MSB Value_LSB 0xFE CHECKSUM

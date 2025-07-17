@@ -28,10 +28,13 @@ void timer10msCallback(int sig, siginfo_t *si, void *uc) {
 void surfaceInit() {
 	// set brightness and contrast
     printf("  Setting brightness and contrast for all displays...\n");
-    setBrightness(4, 255); // brightness of LEDs
+    setBrightness(0, 255); // brightness of LEDs
+    setBrightness(1, 255);
+    setBrightness(4, 255);
     setBrightness(5, 255);
     setBrightness(8, 255);
-    setContrast(4, 0x24); // contrast of LCDs
+    setContrast(0, 0x24); // contrast of LCDs
+    setContrast(4, 0x24);
     setContrast(5, 0x24);
     setContrast(8, 0x24);
 
@@ -57,22 +60,22 @@ void surfaceInit() {
       setLed(8, 40+i, 1); // boardId 8 = faderR
 
       // random leds
-      setLed(4, 0+i, 1); // boardId 4 = faderL
-      setLed(5, 0+i, 1); // boardId 5 = faderM
-      setLed(8, 0+i, 1); // boardId 8 = faderR
+//      setLed(4, 0+i, 1); // boardId 4 = faderL
+//      setLed(5, 0+i, 1); // boardId 5 = faderM
+//      setLed(8, 0+i, 1); // boardId 8 = faderR
     }
 
     // fader ranges from 0...8
     printf("  Setting Faders for boards 4, 5 and 8...\n");
     for (uint8_t i=0; i<=8; i++) {
-      setFader(4, i, 0x03FF);
-      setFader(5, i, 0x03FF);
-      setFader(8, i, 0x03FF);
+      setFader(4, i, 0x0 + 0xAA*i);
+      setFader(5, i, 0x555 + 0xAA*i);
+      setFader(8, i, 0xAAA + 0xAA*i);
     }
 
     // meterLED ranges from 1...9
     printf("  Setting VU-Meters for boards 4, 5 and 8...\n");
-    for (uint8_t i=0; i<=8; i++) {
+    for (uint8_t i=0; i<=7; i++) {
       setMeterLed(4, i, 0xFF);
       setMeterLed(5, i, 0xFF);
       setMeterLed(8, i, 0xFF);
@@ -88,12 +91,12 @@ void surfaceInit() {
     for (uint8_t i=0; i<=8; i++) {
       setLcd(4, i, 1, 0xE2, 0x20, 0, 0, "Board 1", 0x00, 0, 48, "OpenX32"); // setLcd(boardId, index, color, icon, sizeA, xA, yA, const char* strA, sizeB, xB, yB, const char* strB)
       setLcd(5, i, 2, 0xE2, 0x20, 0, 0, "Board 2", 0x00, 0, 48, "OpenX32"); // setLcd(boardId, index, color, icon, sizeA, xA, yA, const char* strA, sizeB, xB, yB, const char* strB)
-      setLcd(6, i, 4, 0xE2, 0x20, 0, 0, "Board 3", 0x00, 0, 48, "OpenX32"); // setLcd(boardId, index, color, icon, sizeA, xA, yA, const char* strA, sizeB, xB, yB, const char* strB)
+      setLcd(8, i, 4, 0xE2, 0x20, 0, 0, "Board 3", 0x00, 0, 48, "OpenX32"); // setLcd(boardId, index, color, icon, sizeA, xA, yA, const char* strA, sizeB, xB, yB, const char* strB)
     }
 }
 
 // function will be called by uart-receive-function
-void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint8_t value) {
+void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t value) {
   if (class == 'f') {
       float pct = value / 40.95; // convert to percent
       printf("Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
@@ -125,7 +128,7 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint8_t valu
       }
 
       // inform LVGL about this new button-press
-      guiNewButtonPress(((uint16_t)boardId << 8) + index, value > 0);
+      guiNewButtonPress(((uint16_t)boardId << 8) + (uint16_t)index, value > 0);
   }else if (class == 'e') {
       printf("Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
   }
