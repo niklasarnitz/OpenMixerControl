@@ -13,15 +13,13 @@ typedef struct {
     size_t current_length;
 } messageBuilder;
 
-messageBuilder message;
-
 void messageBuilderInit(messageBuilder *message);
 int messageBuilderAddRawByte(messageBuilder *message, unsigned char byte);
 int messageBuilderAddDataByte(messageBuilder *message, unsigned char byte);
-int messageBuilderAddRawByteArray(messageBuilder *message, const char* data);
-int messageBuilderAddDataArray(messageBuilder *message, const char* data);
+int messageBuilderAddString(messageBuilder *message, const char* str);
+int messageBuilderAddDataArray(messageBuilder *message, const char* data, uint8_t len);
 
-uint8_t calculateChecksum(const unsigned char *data, uint16_t length);
+uint8_t calculateChecksum(const unsigned char *data, uint16_t len);
 int uartTxData(messageBuilder *builder);
 int uartOpen();
 int uartRead();

@@ -45,22 +45,21 @@ int messageBuilderAddDataByte(messageBuilder *message, unsigned char byte) {
 }
 
 // add a multiple bytes to buffer without byte-stuffing
-int messageBuilderAddRawByteArray(messageBuilder *message, const char* data) {
+int messageBuilderAddString(messageBuilder *message, const char* str) {
     // check if we have space left in message-buffer (max. 64 bytes for payload)
     if (message->current_length >= MAX_MESSAGE_SIZE) {
         fprintf(stderr, "Error: Message buffer overflow before adding data!\n");
         return -1;
     }
 
-    // as we do not apply byte-stuffing, we can copy the data directly to the buffer
-    uint8_t datalen = strlen(data);
-    memcpy(message->buffer[message->current_length], data, datalen); // dst, src, size
-	message->current_length += datalen;
+    // as we do not apply byte-stuffing for ASCII-characters, we can copy the data directly to the buffer
+    memcpy(&message->buffer[message->current_length], str, strlen(str)); // dst, src, size
+    message->current_length += strlen(str);
     return 0;
 }
 
 // add a multiple bytes to buffer using byte-stuffing
-int messageBuilderAddDataArray(messageBuilder *message, const char* data) {
+int messageBuilderAddDataArray(messageBuilder *message, const char* data, uint8_t len) {
     // check if we have space left in message-buffer (max. 64 bytes for payload)
     if (message->current_length >= MAX_MESSAGE_SIZE) {
         fprintf(stderr, "Error: Message buffer overflow before adding data!\n");
@@ -68,9 +67,9 @@ int messageBuilderAddDataArray(messageBuilder *message, const char* data) {
     }
 
     // now step through the data, add it to the message and check if we have to do byte-stuffing
-    for (uint8_t i=0; i<strlen(data); i++) {
+    for (uint8_t i=0; i<len; i++) {
         message->buffer[message->current_length++] = data[i];
-    
+
         // if added byte is 0xFE -> add 0xFF (byte-stuffing)
         // check if we have space left for byte-stuffing
         if (data[i] == 0xFE) {
@@ -80,19 +79,20 @@ int messageBuilderAddDataArray(messageBuilder *message, const char* data) {
             }
             message->buffer[message->current_length++] = 0xFF;
         }
-	}
+    }
     return 0;
 }
 
+// incoming message has the form: 0xFE 0x8i Class Index Data[] 0xFE
 // Checksum is calculated using the following equation:
 // chksum = ( 0xFE - i - class - index - sumof(data[]) - sizeof(data[]) ) and 0x7F
-uint8_t calculateChecksum(const unsigned char *data, uint16_t length) {
+uint8_t calculateChecksum(const unsigned char *data, uint16_t len) {
   // a single message can contain up to max. 64 chars
   int32_t sum = 0xFE;
-  for (uint8_t i = 0; i < (length-2); i++) {
+  for (uint8_t i = 0; i < (len-1); i++) {
     sum -= data[i];
   }
-  sum -= (length - 4); // remove 2-byte HEADER and 2-byte Tail (0xFE and CHECKSUM)
+  sum -= (len - 3); // remove 2-byte HEADER (0xFE 0x8i) and 1-byte end (0xFE)
 
   // write the calculated sum to the last element of the array
   return (sum & 0x7F);
@@ -111,9 +111,9 @@ int uartTxData(messageBuilder *message) {
 
     // add checksum to message and send data via serial-port
     messageBuilderAddRawByte(message, checksum);
-	int bytes_written = write(fd, message->buffer, message->current_length);
-	
-	return bytes_written;
+    int bytes_written = write(fd, message->buffer, message->current_length);
+
+    return bytes_written;
 }
 
 int uartOpen() {

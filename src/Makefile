@@ -41,6 +41,8 @@ CXXSRCS         := $(shell find \
                         -path './lv_port_linux/lvgl/tests' -prune -o \
 			-type f -name '*.cpp' -not -path './lv_port_linux/src/main.c' -print)
 
+all: copy default
+
 # Include LVGL sources
 include $(LVGL_DIR)/lvgl/lvgl.mk
 
@@ -53,8 +55,6 @@ AOBJS           = $(ASRCS:.S=$(OBJEXT))
 SRCS            = $(ASRCS) $(CSRCS) $(CXXSRCS)
 OBJS            = $(AOBJS) $(COBJS) $(CXXOBJS)
 TARGET          = $(addprefix $(BUILD_OBJ_DIR)/, $(patsubst ./%, %, $(OBJS)))
-
-all: default
 
 $(BUILD_OBJ_DIR)/%.o: %.c lv_conf.h
 	@mkdir -p $(dir $@)
@@ -71,16 +71,13 @@ $(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
 	@$(CC)  $(CFLAGS) -c $< -o $@
 	@echo "AS  $<"
 
+copy:
+	# copy lv_conf.h to lv_port_linux to match expected structure of LVGL and its port
+	cp lv_conf.h lv_port_linux/lv_conf.h
+
 default: $(TARGET)
 	@mkdir -p $(dir $(BUILD_BIN_DIR)/)
 	$(CXX) -o $(BUILD_BIN_DIR)/$(BIN) $(TARGET) $(LDFLAGS)
 
 clean:
 	rm -rf $(BUILD_DIR)
-
-install:
-	install -d $(DESTDIR)$(bindir)
-	install $(BUILD_BIN_DIR)/$(BIN) $(DESTDIR)$(bindir)
-
-uninstall:
-	$(RM) -r $(addprefix $(DESTDIR)$(bindir)/,$(BIN))
