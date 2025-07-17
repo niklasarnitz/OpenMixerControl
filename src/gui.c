@@ -130,21 +130,6 @@ void guiInit() {
 
   // initialize GUI created by EEZ
   ui_init();
-/*
-  // create simple Hello World-text
-  lv_obj_t *label_1 = lv_label_create(lv_scr_act());
-  lv_label_set_text(label_1, "Hello World!");
-  lv_obj_set_style_text_font(label_1, &lv_font_montserrat_30, 0);
-  lv_obj_align(label_1, LV_ALIGN_CENTER, 0, -20);
-  lv_obj_t *label_2 = lv_label_create(lv_scr_act());
-  lv_label_set_text_fmt(label_2, "From OpenX32 - The OpenSource Operating System for Behringers X32");
-  lv_obj_set_style_text_font(label_2, &lv_font_montserrat_16, 0);
-  lv_obj_align_to(label_2, label_1, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-  lv_obj_t *label_3 = lv_label_create(lv_scr_act());
-  lv_label_set_text_fmt(label_3, "LVGL (%d.%d.%d)", LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH);
-  lv_obj_set_style_text_font(label_3, &lv_font_montserrat_16, 0);
-  lv_obj_align_to(label_3, label_2, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-*/
 
   guiInitInput();
 

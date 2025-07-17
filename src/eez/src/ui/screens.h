@@ -11,6 +11,7 @@ typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *testbar;
     lv_obj_t *testbartext;
+    lv_obj_t *debugtext;
 } objects_t;
 
 extern objects_t objects;

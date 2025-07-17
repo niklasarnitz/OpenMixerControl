@@ -65,7 +65,7 @@ void create_screen_main() {
                             lv_obj_set_pos(obj, 270, 53);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                             lv_obj_set_style_text_font(obj, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "Hello Youtube!");
+                            lv_label_set_text(obj, "OpenX32 GUI");
                         }
                     }
                 }
@@ -76,6 +76,15 @@ void create_screen_main() {
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Info");
                 }
             }
+        }
+        {
+            // debugtext
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.debugtext = obj;
+            lv_obj_set_pos(obj, 55, 297);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text(obj, "...");
         }
     }
     

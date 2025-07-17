@@ -7,19 +7,17 @@ void setFader(uint8_t boardId, uint8_t index, uint16_t position) {
   // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
   // 0x46, i, position.w * (1..8(9))
 
-  unsigned char buf[8];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'F'; // class: F = Fader
-  buf[3] = index;
-  buf[4] = (position & 0xFF);
-  buf[5] = (unsigned char)((position & 0x0F00) >> 8);
-  // more fader can be sent by appending them here
-  buf[6] = 0xFE;
-  buf[7] = 0x00; // checksum will be set by next function
+  messageBuilderInit(&message);
 
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'F'); // class: F = Fader
+  messageBuilderAddDataByte(&message, index); // index
+  messageBuilderAddDataByte(&message, (position & 0xFF)); // 
+  messageBuilderAddDataByte(&message, (unsigned char)((position & 0x0F00) >> 8)); // 
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTxData(&message);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -29,24 +27,23 @@ void setFader(uint8_t boardId, uint8_t index, uint16_t position) {
 void setLed(uint8_t boardId, uint8_t ledId, uint8_t state) {
   // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
   // 0x4C, 0x80, leds.b[]
-  unsigned char buf[7];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'L'; // class: L = LED
-  buf[3] = 0x80; // index
+
+  messageBuilderInit(&message);
+
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'L'); // class: L = LED
+  messageBuilderAddDataByte(&message, index); // index
   if (state > 0) {
     // turn LED on
-    buf[4] = ledId + 0x80;
+    messageBuilderAddDataByte(&message, ledId + 0x80);
   }else{
     // turn LED off
-    buf[4] = ledId;
+    messageBuilderAddDataByte(&message, ledId);
   }
-  // more LEDs could be set by adding more data here
-  buf[5] = 0xFE;
-  buf[6] = 0x00; // checksum will be set by next function
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  uartTxData(&message);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -55,18 +52,17 @@ void setLed(uint8_t boardId, uint8_t ledId, uint8_t state) {
 void setMeterLed(uint8_t boardId, uint8_t index, uint8_t leds) {
   // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
   // 0x4C, index, leds.b[]
-  unsigned char buf[7];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'M'; // class: M = Meter
-  buf[3] = index; // index
-  buf[4] = leds;
-  // more LEDs could be set by adding more data here
-  buf[5] = 0xFE;
-  buf[6] = 0x00; // checksum will be set by next function
 
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  messageBuilderInit(&message);
+
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'M'); // class: M = Meter
+  messageBuilderAddDataByte(&message, index); // index
+  messageBuilderAddDataByte(&message, leds); // 
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTxData(&message);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -75,12 +71,14 @@ void setMeterLed(uint8_t boardId, uint8_t index, uint8_t leds) {
 void setEncoderRing(uint8_t boardId, uint8_t index, uint8_t ledMode, uint8_t ledPct, bool backlight) {
   // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
   // 0x52, index, leds.w[]
-  unsigned char buf[8];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'R'; // class: R = Ring
-  buf[3] = index; // index
-  
+
+  messageBuilderInit(&message);
+
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'R'); // class: R = Ring
+  messageBuilderAddDataByte(&message, index); // index
+
   uint16_t leds = 0;
   switch (ledMode) {
 	case 1: // calcEncoderRingLedIncrement
@@ -96,55 +94,47 @@ void setEncoderRing(uint8_t boardId, uint8_t index, uint8_t ledMode, uint8_t led
 		leds = calcEncoderRingLedWidth(ledPct);
 		break;
   }
-  
-  buf[4] = (leds & 0xFF);
+  messageBuilderAddDataByte(&message, leds & 0xFF); // 
   if (backlight) {
-    buf[5] = (leds & 0x7F00 >> 8) + 0x80;
+    messageBuilderAddDataByte(&message, (leds & 0x7F00 >> 8) + 0x80);
   }else{
-    buf[5] = (leds & 0x7F00 >> 8);
+    messageBuilderAddDataByte(&message, (leds & 0x7F00 >> 8));
   }
-  // more LEDs could be set by adding more data here
-  buf[6] = 0xFE;
-  buf[7] = 0x00; // checksum will be set by next function
-
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+  
+  uartTxData(&message);
 }
 
 // boardId = 0, 1, 4, 5, 8
 // index = 0 ... 8
 // brightness = 0 ... 255
 void setBrightness(uint8_t boardId, uint8_t brightness) {
-  unsigned char buf[7];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'C'; // class: M = Meter
-  buf[3] = 'B'; // index
-  buf[4] = brightness;
-  // more LEDs could be set by adding more data here
-  buf[5] = 0xFE;
-  buf[6] = 0x00; // checksum will be set by next function
+  messageBuilderInit(&message);
 
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'C'); // class: C = Controlmessage
+  messageBuilderAddDataByte(&message, 'B'); // index
+  messageBuilderAddDataByte(&message, brightness); // 
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTxData(&message);
 }
 
 // boardId = 0, 1, 4, 5, 8
 // index = 0 ... 8
 // brightness = 0 ... 255
 void setContrast(uint8_t boardId, uint8_t contrast) {
-  unsigned char buf[7];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'C'; // class: M = Meter
-  buf[3] = 'C'; // index
-  buf[4] = contrast & 0x3F;
-  // more LEDs could be set by adding more data here
-  buf[5] = 0xFE;
-  buf[6] = 0x00; // checksum will be set by next function
+  messageBuilderInit(&message);
 
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'C'); // class: C = Controlmessage
+  messageBuilderAddDataByte(&message, 'C'); // index
+  messageBuilderAddDataByte(&message, contrast & 0x3F); // 
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTxData(&message);
 }
 
 // boardId = 0, 4, 5, 8
@@ -155,55 +145,42 @@ void setContrast(uint8_t boardId, uint8_t contrast) {
 // xA/B = horizontal position in pixel
 // yA/B = vertical position in pixel
 // strA/B = String of Text to be displayed
-void setLcd(uint8_t boardId, uint8_t index, uint8_t color, uint8_t icon, uint8_t sizeA, uint8_t xA, uint8_t yA, const char* strA, uint8_t sizeB, uint8_t xB, uint8_t yB, const char* strB) {
+void setLcd(uint8_t boardId, uint8_t index, uint8_t color, uint8_t xicon, uint8_t yicon, uint8_t icon, uint8_t sizeA, uint8_t xA, uint8_t yA, const char* strA, uint8_t sizeB, uint8_t xB, uint8_t yB, const char* strB) {
   // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
   // 0x44, i, color.b, script[]
 
-  uint8_t strlenA = strlen(strA);
-  uint8_t strlenB = strlen(strB);
+  messageBuilderInit(&message);
 
-  unsigned char buf[7 + 3 + (3 + strlenA) + (3 + strlenB)];
-  buf[0] = 0xFE; // startbyte
-  buf[1] = 0x80 + boardId; // start message for specific boardId
-  buf[2] = 'D'; // class: M = Meter
-  buf[3] = index; // index
-  buf[4] = color & 0x07; // use only 3 bits (bit 0=R, 1=G, 2=B)
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'D'); // class: D = Display
+  messageBuilderAddDataByte(&message, index); // index
+  messageBuilderAddDataByte(&message, color & 0x07); // use only 3 bits (bit 0=R, 1=G, 2=B)
 
+  
   // begin of script
-  buf[5] = icon;
-  buf[6] = 70; // x-position icon
-  buf[7] = 8; // y-position icon
+  // transmit icon
+  messageBuilderAddDataByte(&message, icon);
+  messageBuilderAddDataByte(&message, xicon);
+  messageBuilderAddDataByte(&message, yicon);
+  
+  // transmit first text
+  messageBuilderAddDataByte(&message, sizeA + strlen(strA)); // size + textLength
+  messageBuilderAddDataByte(&message, xA);
+  messageBuilderAddDataByte(&message, yA);
+  messageBuilderAddRawByteArray(&message, strA); // this is ASCII, so we can omit byte-stuffing
+  
+  messageBuilderAddDataByte(&message, sizeB + strlen(strB)); // size + textLength
+  messageBuilderAddDataByte(&message, xB);
+  messageBuilderAddDataByte(&message, yB);
+  messageBuilderAddRawByteArray(&message, strB); // this is ASCII, so we can omit byte-stuffing
+  
 
-  buf[8] = sizeA + strlenA; // size + textLength
-  buf[9] = xA;
-  buf[10] = yA;
-  memcpy(&buf[11], strA, strlenA); // dst, src, size
-
-  buf[11 + strlenA] = sizeB + strlenB;
-  buf[12 + strlenA] = xB;
-  buf[13 + strlenA] = yB;
-  memcpy(&buf[14 + strlenA], strB, strlenB); // dst, src, size
   // end of script
+  
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  buf[sizeof(buf)-2] = 0xFE;
-  buf[sizeof(buf)-1] = 0x00; // checksum will be set by next function
-
-  calculateChecksum(buf, sizeof(buf));
-  uartTxData(buf, sizeof(buf));
-}
-
-// Checksum is calculated using the following equation:
-// chksum = ( 0xFE - i - class - index - sumof(data[]) - sizeof(data[]) ) and 0x7F
-void calculateChecksum(unsigned char *data, uint16_t length) {
-  // a single message can contain up to max. 64 chars
-  int32_t sum = 0xFE;
-  for (uint8_t i = 0; i < (length-2); i++) {
-    sum -= data[i];
-  }
-  sum -= (length - 4); // remove 2-byte HEADER and 2-byte Tail (0xFE and CHECKSUM)
-
-  // write the calculated sum to the last element of the array
-  data[length-1] = (sum & 0x7F);
+  uartTxData(&message);
 }
 
 // bit 0=CCW, bit 14 = CW, bit 15=encoder-backlight

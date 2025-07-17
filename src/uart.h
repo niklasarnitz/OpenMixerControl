@@ -6,8 +6,23 @@
 // Maximal mögliche Paketlänge inklusive Startbyte, Endbyte und Checksumme
 // Langes Paket: 0xFE (1) + BoardID (1) + ID (1) + Value_MSB (1) + Value_LSB (1) + 0xFE (1) + CHECKSUM (1) = 7 Bytes
 #define MAX_BUFFER_SIZE 32 // Etwas größer als die maximale Paketlänge, um Überläufe zu handhaben
+#define MAX_MESSAGE_SIZE 64
 
-int uartTxData(const unsigned char *data_buffer, int num_bytes);
+typedef struct {
+    unsigned char buffer[MAX_MESSAGE_SIZE];
+    size_t current_length;
+} messageBuilder;
+
+messageBuilder message;
+
+void messageBuilderInit(messageBuilder *message);
+int messageBuilderAddRawByte(messageBuilder *message, unsigned char byte);
+int messageBuilderAddDataByte(messageBuilder *message, unsigned char byte);
+int messageBuilderAddRawByteArray(messageBuilder *message, const char* data);
+int messageBuilderAddDataArray(messageBuilder *message, const char* data);
+
+uint8_t calculateChecksum(const unsigned char *data, uint16_t length);
+int uartTxData(messageBuilder *builder);
 int uartOpen();
 int uartRead();
 

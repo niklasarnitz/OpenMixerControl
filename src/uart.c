@@ -8,26 +8,112 @@ ssize_t bytes_read;
 int bytes_available;
 uint8_t receivedBoardId;
 
-int uartTxData(const unsigned char *data_buffer, int num_bytes) {
+void messageBuilderInit(messageBuilder *message) {
+    message->current_length = 0;
+}
+
+// allows writing a single byte to buffer without using byte-stuffing
+int messageBuilderAddRawByte(messageBuilder *message, unsigned char byte) {
+    if (message->current_length >= MAX_MESSAGE_SIZE) {
+        fprintf(stderr, "Error: Message buffer overflow when adding byte 0x%02X!\n", byte);
+        return -1;
+    }
+    message->buffer[message->current_length++] = byte;
+    return 0;
+}
+
+// add a single byte to buffer using byte-stuffing
+int messageBuilderAddDataByte(messageBuilder *message, unsigned char byte) {
+    // check if we have space left in message-buffer (max. 64 bytes for payload)
+    if (message->current_length >= MAX_MESSAGE_SIZE) {
+        fprintf(stderr, "Error: Message buffer overflow before adding data byte 0x%02X!\n", byte);
+        return -1;
+    }
+
+    message->buffer[message->current_length++] = byte;
+
+    // if added byte is 0xFE -> add 0xFF (byte-stuffing)
+    // check if we have space left for byte-stuffing
+    if (byte == 0xFE) {
+        if (message->current_length >= MAX_MESSAGE_SIZE) {
+            fprintf(stderr, "Error: Message buffer overflow during stuffing for 0xFE!\n");
+            return -1;
+        }
+        message->buffer[message->current_length++] = 0xFF;
+    }
+    return 0;
+}
+
+// add a multiple bytes to buffer without byte-stuffing
+int messageBuilderAddRawByteArray(messageBuilder *message, const char* data) {
+    // check if we have space left in message-buffer (max. 64 bytes for payload)
+    if (message->current_length >= MAX_MESSAGE_SIZE) {
+        fprintf(stderr, "Error: Message buffer overflow before adding data!\n");
+        return -1;
+    }
+
+    // as we do not apply byte-stuffing, we can copy the data directly to the buffer
+    uint8_t datalen = strlen(data);
+    memcpy(message->buffer[message->current_length], data, datalen); // dst, src, size
+	message->current_length += datalen;
+    return 0;
+}
+
+// add a multiple bytes to buffer using byte-stuffing
+int messageBuilderAddDataArray(messageBuilder *message, const char* data) {
+    // check if we have space left in message-buffer (max. 64 bytes for payload)
+    if (message->current_length >= MAX_MESSAGE_SIZE) {
+        fprintf(stderr, "Error: Message buffer overflow before adding data!\n");
+        return -1;
+    }
+
+    // now step through the data, add it to the message and check if we have to do byte-stuffing
+    for (uint8_t i=0; i<strlen(data); i++) {
+        message->buffer[message->current_length++] = data[i];
+    
+        // if added byte is 0xFE -> add 0xFF (byte-stuffing)
+        // check if we have space left for byte-stuffing
+        if (data[i] == 0xFE) {
+            if (message->current_length >= MAX_MESSAGE_SIZE) {
+                fprintf(stderr, "Error: Message buffer overflow during stuffing for 0xFE!\n");
+                return -1;
+            }
+            message->buffer[message->current_length++] = 0xFF;
+        }
+	}
+    return 0;
+}
+
+// Checksum is calculated using the following equation:
+// chksum = ( 0xFE - i - class - index - sumof(data[]) - sizeof(data[]) ) and 0x7F
+uint8_t calculateChecksum(const unsigned char *data, uint16_t length) {
+  // a single message can contain up to max. 64 chars
+  int32_t sum = 0xFE;
+  for (uint8_t i = 0; i < (length-2); i++) {
+    sum -= data[i];
+  }
+  sum -= (length - 4); // remove 2-byte HEADER and 2-byte Tail (0xFE and CHECKSUM)
+
+  // write the calculated sum to the last element of the array
+  return (sum & 0x7F);
+}
+
+int uartTxData(messageBuilder *message) {
     if (fd < 0) {
         fprintf(stderr, "Error: Problem on opening serial port\n");
         return -1;
     }
-    if (data_buffer == NULL || num_bytes <= 0) {
-        fprintf(stderr, "Error: Wrong number of bytes.\n");
-        return 0;
+
+    unsigned char checksum = 0;
+    if (message->current_length >= 2) { // at least start- and end-byte
+        checksum = calculateChecksum(message->buffer, message->current_length);
     }
 
-    ssize_t bytes_written = write(fd, data_buffer, num_bytes);
-
-    if (bytes_written < 0) {
-        perror("On on writing to serial port");
-        return -1;
-    } else if (bytes_written != num_bytes) {
-        fprintf(stderr, "Warning: Only %zd of %d Bytes written!\n", bytes_written, num_bytes);
-    }
-
-    return (int)bytes_written;
+    // add checksum to message and send data via serial-port
+    messageBuilderAddRawByte(message, checksum);
+	int bytes_written = write(fd, message->buffer, message->current_length);
+	
+	return bytes_written;
 }
 
 int uartOpen() {

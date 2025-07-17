@@ -4,9 +4,6 @@
   v0.0.1, 16.07.2025
 
   Parts of this software with kind permission of Music Tribe. Thank you!
-
-  TODO:
-  - Value 0xFE must not appear inside class, index or data-part of the message. Encode 0xFE as 0xFE, 0xFF instead
 */
 
 #include "x32ctrl.h"
@@ -99,9 +96,11 @@ void surfaceInit() {
 void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t value) {
   if (class == 'f') {
       float pct = value / 40.95; // convert to percent
-      printf("Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
+      //printf("Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
+	  lv_label_set_text_fmt(objects.debugtext, "Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
   }else if (class == 'b') {
-      printf("Button  : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
+      //printf("Button  : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
+	  lv_label_set_text_fmt(objects.debugtext, "Button  : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
 
       // register buttons
       switch (boardId) {
@@ -130,7 +129,8 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
       // inform LVGL about this new button-press
       guiNewButtonPress(((uint16_t)boardId << 8) + (uint16_t)index, value > 0);
   }else if (class == 'e') {
-      printf("Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
+      //printf("Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
+	  lv_label_set_text_fmt(objects.debugtext, "Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
   }
 }
 
