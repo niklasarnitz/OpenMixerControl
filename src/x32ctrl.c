@@ -120,13 +120,13 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
           case 1: // eq-section and screen-area
             switch(index) {
               case 0: // left
-            break;
+                break;
               case 1: // right
-            break;
+                break;
               case 2: // up
-            break;
+                break;
               case 3: // down
-            break;
+                break;
             }
             break;
           case 4: // faderBoard left
@@ -138,7 +138,7 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
       }
 
       // inform LVGL about this new button-press
-      guiNewButtonPress(((uint16_t)boardId << 8) + (uint16_t)index, value > 0);
+      guiNewButtonPress(((uint16_t)boardId << 8) + (uint16_t)(value & 0x7F), (value >> 7));
   }else if (class == 'e') {
       //printf("Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
 	  lv_label_set_text_fmt(objects.debugtext, "Encoder : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);

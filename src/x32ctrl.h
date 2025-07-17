@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <math.h>
+#include <linux/input.h>
 
 // special includes
 #include <string.h>
@@ -22,8 +23,8 @@
 #include <sys/ioctl.h> // for FIONREAD
 
 // includes for lvgl
-#include <lvgl/lvgl.h>
-#include "src/lib/driver_backends.h"
+#include "lv_port_linux/lvgl/lvgl.h"
+#include "lv_port_linux/src/lib/backends.h"
 
 // including the GUI built by EEZ-Studio
 #include "eez/src/ui/actions.h"

@@ -30,19 +30,58 @@ void guiKeypadInputCallback(lv_indev_t * indev, lv_indev_data_t * data){
   } else {
     data->state = LV_INDEV_STATE_RELEASED;
   }
+
+  lv_label_set_text_fmt(objects.testbartext, "Button %i pressed!", lastButton);
 }
 
 void guiMouseInputCallback(lv_indev_t * indev, lv_indev_data_t * data) {
-/*
-    if(touchpad_pressed) {
-        data->point.x = touchpad_x;
-        data->point.y = touchpad_y;
-        data->state = LV_INDEV_STATE_PRESSED;
-    } else {
-        data->state = LV_INDEV_STATE_RELEASED;
-    }
-*/
-  data->state = LV_INDEV_STATE_RELEASED;
+  bool left, middle, right;
+  int16_t x, y;
+  struct input_event ev;
+
+  int fd_mouse = open("/dev/input/event5", O_RDONLY | O_NONBLOCK);
+  uint8_t bytes = read(fd_mouse, &ev, sizeof(struct input_event));
+  close(fd_mouse);
+
+  switch (ev.type) {
+    case EV_REL: // Relativbewegung (Maus)
+      switch (ev.code) {
+        case REL_X:
+          if ((ev.value > 0) && (data->point.x < 800) && (ev.value < 800)) {
+            data->point.x += ev.value;
+          }else if ((ev.value < 0) && (data->point.x > 0) && (ev.value > -800)) {
+            data->point.x += ev.value;
+          }
+          break;
+        case REL_Y:
+          if ((ev.value > 0) && (data->point.y < 480) && (ev.value < 480)) {
+            data->point.y += ev.value;
+          }else if ((ev.value < 0) && (data->point.y > 0) && (ev.value > -480)) {
+            data->point.y += ev.value;
+          }
+          break;
+        case REL_WHEEL:
+          // ev.value
+          break;
+      }
+      break;
+    case EV_KEY:
+      left = (ev.code == BTN_LEFT);
+      right = (ev.code == BTN_RIGHT);
+      middle = (ev.code == BTN_MIDDLE);
+      break;
+    default:
+      break;
+  }
+
+  if (left) {
+    data->state = LV_INDEV_STATE_PRESSED;
+  } else {
+    data->state = LV_INDEV_STATE_RELEASED;
+  }
+
+//  printf("Mouse x = %i | y = %i", x, y);
+//  lv_label_set_text_fmt(objects.testbartext, "Mouse Type = %i | Code = %i!", ev.type, ev.code);
 }
 
 /*
@@ -119,10 +158,9 @@ void guiInitInput() {
 }
 
 void guiInit() {
-  driver_backends_register();
-
   lv_init();
 
+  driver_backends_register();
   driver_backends_init_backend("FBDEV");
 
   lv_timer_create(timer10msCallback, 10, NULL);
