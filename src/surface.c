@@ -46,6 +46,34 @@ void setLed(uint8_t boardId, uint8_t ledId, uint8_t state) {
   uartTxData(&message);
 }
 
+// ledNr = Nr of the LED from constants.h (contains BoardId and LED-Nr)
+// state = 0 / 1
+void setLedByNr(uint16_t ledNr, uint8_t state) {
+  // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
+  // 0x4C, 0x80, leds.b[]
+
+  uint8_t boardId = (uint8_t)((ledNr & 0xFF00) >> 8);
+  uint8_t ledId = (uint8_t)(ledNr & 0x7F);
+
+  //printf("LedNr: 0x%04X -> BoardId: 0x%02X, LED: 0x%02X\n", ledNr, boardId, ledId);
+
+  messageBuilderInit(&message);
+
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + boardId); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'L'); // class: L = LED
+  messageBuilderAddDataByte(&message, 0x80); // index - fixed at 0x80 for LEDs
+  if (state > 0) {
+    messageBuilderAddDataByte(&message, ledId + 0x80); // turn LED on
+  }else{
+    messageBuilderAddDataByte(&message, ledId); // turn LED off
+  }
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTxData(&message);
+}
+
+
 // boardId = 0, 1, 4, 5, 8
 // index = 0 ... 8
 // leds = 8-bit bitwise (bit 0=-60dB ... 4=-6dB, 5=Clip, 6=Gate, 7=Comp)
