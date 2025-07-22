@@ -1,7 +1,11 @@
 /*
   Control software for Behringer X32 using OpenX32
   https://github.com/xn--nding-jua/OpenX32
-  v0.0.1, 16.07.2025
+  v0.0.2, 22.07.2025
+
+  This software uses LVGL and the LVGL Linux Port to display a nice user-interface
+  To compile the software just call "make" and a 32-bit ARM-binary should be created
+  in the build/bin-folder
 
   Parts of this software with kind permission of Music Tribe. Thank you!
 */

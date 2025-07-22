@@ -35,6 +35,7 @@ void guiKeypadInputCallback(lv_indev_t * indev, lv_indev_data_t * data){
 }
 
 void guiMouseInputCallback(lv_indev_t * indev, lv_indev_data_t * data) {
+/*
   bool left, middle, right;
   int16_t x, y;
   struct input_event ev;
@@ -77,6 +78,26 @@ void guiMouseInputCallback(lv_indev_t * indev, lv_indev_data_t * data) {
   if (left) {
     data->state = LV_INDEV_STATE_PRESSED;
   } else {
+    data->state = LV_INDEV_STATE_RELEASED;
+  }
+*/
+  if (lastButtonPressed) {
+    if (lastButton == 290) {
+      data->point.x = 50;
+      data->point.y = 15;
+      data->state = LV_INDEV_STATE_PRESSED;
+    }
+    if (lastButton == 291) {
+      data->point.x = 400;
+      data->point.y = 15;
+      data->state = LV_INDEV_STATE_PRESSED;
+    }
+    if (lastButton == 292) {
+      data->point.x = 750;
+      data->point.y = 15;
+      data->state = LV_INDEV_STATE_PRESSED;
+    }
+  }else{
     data->state = LV_INDEV_STATE_RELEASED;
   }
 

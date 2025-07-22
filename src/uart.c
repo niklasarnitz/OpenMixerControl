@@ -200,46 +200,52 @@ int uartRead() {
 				// check if we received enought data to process at least the shortest message
 				if (packet_buffer_len >= 4) {
 					// check for expected end-sequence (0xFE CHECKSUM)
-					if (packet_buffer[packet_buffer_len - 2] == 0xFE) {
+					uint8_t offset = 0;
+					if ((packet_buffer[packet_buffer_len-2] != 0xFE) && (packet_buffer[packet_buffer_len-1] == 0xFE)) {
+						// this packet has no checksum!?
+						offset = 1;
+					}
+
+					if ((packet_buffer[packet_buffer_len - 2] == 0xFE) || (packet_buffer[packet_buffer_len - 1] == 0xFE)) {
 						// check for long 16-bit-packet (8 bytes)
 						// 0xFE + BoardID + Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
-						if (packet_buffer_len >= 8 && packet_buffer[packet_buffer_len - 8] == 0xFE) {
-							receivedBoardId = packet_buffer[packet_buffer_len - 7] & 0x7F;
-							receivedClass = packet_buffer[packet_buffer_len - 6];
-							receivedIndex = packet_buffer[packet_buffer_len - 5];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4];
+						if (packet_buffer_len >= (8 - offset) && packet_buffer[packet_buffer_len - 8 + offset] == 0xFE) {
+							receivedBoardId = packet_buffer[packet_buffer_len - 7 + offset] & 0x7F;
+							receivedClass = packet_buffer[packet_buffer_len - 6 + offset];
+							receivedIndex = packet_buffer[packet_buffer_len - 5 + offset];
+							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3 + offset] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4 + offset];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 8;
+							receivedPacketLength = 8 - offset;
 						}
 						// check for long 8-bit-packet (7 bytes)
 						// 0xFE + BoardID + Class + Index + Value_LSB             + 0xFE + CHECKSUM = 7 Bytes
-						else if (packet_buffer_len >= 7 && packet_buffer[packet_buffer_len - 7] == 0xFE) {
-							receivedBoardId = packet_buffer[packet_buffer_len - 6] & 0x7F;
-							receivedClass = packet_buffer[packet_buffer_len - 5];
-							receivedIndex = packet_buffer[packet_buffer_len - 4];
-							receivedValue = packet_buffer[packet_buffer_len - 3];
+						else if ((packet_buffer_len >= (7 - offset)) && (packet_buffer[packet_buffer_len - 7 + offset] == 0xFE)) {
+							receivedBoardId = packet_buffer[packet_buffer_len - 6 + offset] & 0x7F;
+							receivedClass = packet_buffer[packet_buffer_len - 5 + offset];
+							receivedIndex = packet_buffer[packet_buffer_len - 4 + offset];
+							receivedValue = packet_buffer[packet_buffer_len - 3 + offset];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 7;
+							receivedPacketLength = 7 - offset;
 						}
 						// check for short 16-bit-packet (6 bytes)
 						// Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
-						else if (packet_buffer_len >= 6) {
+						else if (packet_buffer_len >= (6 - offset)) {
 							// 0xFE and BoardID is missing here
-							receivedClass = packet_buffer[packet_buffer_len - 6];
-							receivedIndex = packet_buffer[packet_buffer_len - 5];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4];
+							receivedClass = packet_buffer[packet_buffer_len - 6 + offset];
+							receivedIndex = packet_buffer[packet_buffer_len - 5 + offset];
+							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3 + offset] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4 + offset];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 6;
+							receivedPacketLength = 6 - offset;
 						}
 						// check for short 8-bit-packet (5 bytes)
 						// ID Value_MSB Value_LSB 0xFE CHECKSUM
-						else if (packet_buffer_len >= 5) {
+						else if (packet_buffer_len >= (5 - offset)) {
 							// 0xFE and BoardID is missing here
-							receivedClass = packet_buffer[packet_buffer_len - 5];
-							receivedIndex = packet_buffer[packet_buffer_len - 4];
-							receivedValue = packet_buffer[packet_buffer_len - 3];
+							receivedClass = packet_buffer[packet_buffer_len - 5 + offset];
+							receivedIndex = packet_buffer[packet_buffer_len - 4 + offset];
+							receivedValue = packet_buffer[packet_buffer_len - 3 + offset];
 							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 5;
+							receivedPacketLength = 5 - offset;
 						}
 
 /*
