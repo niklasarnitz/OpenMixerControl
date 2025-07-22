@@ -1,14 +1,14 @@
 #ifndef X32CTRL_H_
 #define X32CTRL_H_
 
-
-/// X32 Destination System
+// X32 Destination System
 
 //#define X32_MODEL_FULL
 #define X32_MODEL_COMPACT
 //#define X32_MODEL_PRODUCER
 //#define X32_MODEL_RACK
 //#define X32_MODEL_CORE
+// TODO: read X32-SD-Card and check which device-type we are
 
 
 

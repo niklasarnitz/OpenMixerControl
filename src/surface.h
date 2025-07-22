@@ -5,6 +5,7 @@
 
 void setFader(uint8_t boardId, uint8_t index, uint16_t position);
 void setLed(uint8_t boardId, uint8_t ledId, uint8_t state);
+void setLedByNr(uint16_t ledNr, uint8_t state);
 void setMeterLed(uint8_t boardId, uint8_t index, uint8_t leds);
 void setEncoderRing(uint8_t boardId, uint8_t index, uint8_t ledMode, uint8_t pct, bool backlight);
 void setBrightness(uint8_t boardId, uint8_t brightness);
