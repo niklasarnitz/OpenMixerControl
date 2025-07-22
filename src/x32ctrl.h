@@ -1,6 +1,17 @@
 #ifndef X32CTRL_H_
 #define X32CTRL_H_
 
+
+/// X32 Destination System
+
+//#define X32_MODEL_FULL
+#define X32_MODEL_COMPACT
+//#define X32_MODEL_PRODUCER
+//#define X32_MODEL_RACK
+//#define X32_MODEL_CORE
+
+
+
 // standard includes
 #include <stdio.h>
 #include <stdlib.h>
