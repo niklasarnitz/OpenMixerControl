@@ -338,3 +338,12 @@ uint16_t calcEncoderRingLedWidth(uint8_t pct) {
 
     return led_mask;
 }
+
+void surfaceReset() {
+    int fd = open("/sys/class/leds/reset_surface/brightness", O_WRONLY);
+    write(fd, "1", 1);
+    usleep(100 * 1000);
+    write(fd, "0", 1);
+    close(fd);
+    usleep(2000 * 1000);
+}

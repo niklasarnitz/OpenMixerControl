@@ -17,4 +17,6 @@ uint16_t calcEncoderRingLedPosition(uint8_t pct);
 uint16_t calcEncoderRingLedBalance(uint8_t pct);
 uint16_t calcEncoderRingLedWidth(uint8_t pct);
 
+void surfaceReset();
+
 #endif
