@@ -160,7 +160,7 @@ int main() {
     uartOpen();
 
     printf("Initializing X32 Surface...\n");
-    surfaceReset(); // resets all microcontrollers on the board
+    //surfaceReset(); // resets all microcontrollers on the board
     surfaceInit(); // sets default values for faders, leds and lcds
 
 /*
