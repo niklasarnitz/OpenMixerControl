@@ -20,9 +20,9 @@ CFLAGS          ?= -O3 -g0 -I$(LVGL_DIR)/ $(WARNINGS)
 LDFLAGS         ?= -lm
 
 BIN             = x32ctrl
-BUILD_DIR       = ./build
+BUILD_DIR       = ../bin
 BUILD_OBJ_DIR   = $(BUILD_DIR)/obj
-BUILD_BIN_DIR   = $(BUILD_DIR)/bin
+BUILD_BIN_DIR   = $(BUILD_DIR)
 
 prefix          ?= /usr
 bindir          ?= $(prefix)/bin
