@@ -112,7 +112,7 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
   if (class == 'f') {
       float pct = value / 40.95; // convert to percent
       //printf("Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
-	  lv_label_set_text_fmt(objects.debugtext, "Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, pct);
+	  lv_label_set_text_fmt(objects.debugtext, "Fader   : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%04X = %f\n", boardId, class, index, value, (double)pct);
   }else if (class == 'b') {
       //printf("Button  : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
 	  lv_label_set_text_fmt(objects.debugtext, "Button  : boardId = 0x%02X | class = 0x%02X | index = 0x%02X | data = 0x%02X\n", boardId, class, index, value);
@@ -158,8 +158,12 @@ int main() {
 
     printf("Reading config...");
     char model[12];
+    char serial[12];
+    char date[16];
     readConfig("/etc/x32.conf", "MDL=", model, 12);
-    printf(" Detected model: %s", model);
+    readConfig("/etc/x32.conf", "SN=", serial, 12);
+    readConfig("/etc/x32.conf", "DATE=", date, 16);
+    printf(" Detected model: %s with Serial %s built on %s", model, serial, date);
 
     printf("Connecting to UART1...\n");
     uartOpen();
