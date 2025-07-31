@@ -157,7 +157,7 @@ int main() {
     printf("https://github.com/xn--nding-jua/OpenX32\n");
 
     printf("Reading config...");
-	char[12] model;
+    char model[12];
     readConfig("/etc/x32.conf", "MDL=", model, 12);
     printf(" Detected model: %s", model);
 
