@@ -3,6 +3,7 @@
 
 #include "x32ctrl.h"
 
-int initTimer();
+int readConfig(const char *filename, const char *key, char *value_buffer, size_t buffer_size);
+//int initTimer();
 
 #endif

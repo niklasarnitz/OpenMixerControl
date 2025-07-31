@@ -156,6 +156,11 @@ int main() {
     printf("v0.0.1, 16.07.2025\n");
     printf("https://github.com/xn--nding-jua/OpenX32\n");
 
+    printf("Reading config...");
+	char[12] model;
+    readConfig("/etc/x32.conf", "MDL=", model, 12);
+    printf(" Detected model: %s", model);
+
     printf("Connecting to UART1...\n");
     uartOpen();
 
