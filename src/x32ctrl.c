@@ -12,6 +12,9 @@
 
 #include "x32ctrl.h"
 
+// global variables
+int8_t x32model = -1;
+
 /*
 // called every 50ms
 void timer50msCallback(int signum) {
@@ -153,7 +156,7 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
 int main() {
     srand(time(NULL));
     printf("OpenX32 UserInterface\n");
-    printf("v0.0.1, 16.07.2025\n");
+    printf("v0.0.2, 31.07.2025\n");
     printf("https://github.com/xn--nding-jua/OpenX32\n");
 
     printf("Reading config...");
@@ -163,7 +166,20 @@ int main() {
     readConfig("/etc/x32.conf", "MDL=", model, 12);
     readConfig("/etc/x32.conf", "SN=", serial, 12);
     readConfig("/etc/x32.conf", "DATE=", date, 16);
-    printf(" Detected model: %s with Serial %s built on %s", model, serial, date);
+    if (strcmp(model, "X32Core") == 0) {
+        x32model = 4;
+    }else if (strcmp(model, "X32Rack") == 0) {
+        x32model = 3;
+    }else if (strcmp(model, "X32Producer") == 0) {
+        x32model = 2;
+    }else if (strcmp(model, "X32Compact") == 0) {
+        x32model = 1;
+    }else if (strcmp(model, "X32") == 0) {
+        x32model = 0;
+    }else{
+        x32model = -1;
+    }
+    printf(" Detected model: %s with Serial %s built on %s\n", model, serial, date);
 
     printf("Connecting to UART1...\n");
     uartOpen();
@@ -174,7 +190,7 @@ int main() {
 
 /*
     printf("Start Timer...\n");
-    initTimer();
+    initTimer(); // only necessary if LVGL is not used
 
     printf("Wait for incoming data on /dev/ttymxc1...\n");
     printf("Press Ctrl+C to terminate program.\n");
@@ -187,7 +203,7 @@ int main() {
 */
 
     printf("Initializing GUI...\n");
-    guiInit(); // initializes LVGL and FBDEV and starts endless loop
+    guiInit(); // initializes LVGL, FBDEV and starts endless loop
 
     return 0;
 }

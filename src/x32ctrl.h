@@ -8,9 +8,7 @@
 //#define X32_MODEL_PRODUCER
 //#define X32_MODEL_RACK
 //#define X32_MODEL_CORE
-// TODO: read X32-SD-Card and check which device-type we are
-
-
+//TODO: replace preprocessor-defines with check against x32model-variable
 
 // standard includes
 #include <stdio.h>
@@ -52,6 +50,9 @@
 #include "uart.h"
 #include "surface.h"
 #include "auxiliary.h"
+
+// variables
+extern int8_t x32model; // -1=unknown, 0=X32, 1=X32Compact, 2=X32Producer, 3=X32Rack, 4=X32Core
 
 // function prototypes
 //void timer50Callback(int signum);
