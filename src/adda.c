@@ -204,7 +204,7 @@ void addaProcessUartData(int bytesToProcess) {
           }
         }
 
-        receivedPacketLength = (packetEnd - packetBegin);
+        receivedPacketLength = (packetEnd - packetBegin + 1);
         if ((packetBegin > 0) && (packetEnd > 0) && (receivedPacketLength > 0)) {
           // we found a valid answer from the ADDA-boards
 
