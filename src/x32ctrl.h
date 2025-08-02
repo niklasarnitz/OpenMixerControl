@@ -50,6 +50,7 @@
 #include "uart.h"
 #include "surface.h"
 #include "auxiliary.h"
+#include "adda.h"
 
 // variables
 extern int8_t x32model; // -1=unknown, 0=X32, 1=X32Compact, 2=X32Producer, 3=X32Rack, 4=X32Core
@@ -57,7 +58,8 @@ extern int8_t x32model; // -1=unknown, 0=X32, 1=X32Compact, 2=X32Producer, 3=X32
 // function prototypes
 //void timer50Callback(int signum);
 void timer10msCallback(int sig, siginfo_t *si, void *uc);
-void surfaceInit();
+void surfaceDemo(void);
 void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t value);
+void addaCallback(char *msg);
 
 #endif

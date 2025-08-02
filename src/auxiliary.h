@@ -4,6 +4,7 @@
 #include "x32ctrl.h"
 
 int readConfig(const char *filename, const char *key, char *value_buffer, size_t buffer_size);
+//int valueToBinaryString(uint8_t value, char *output);
 //int initTimer();
 
 #endif

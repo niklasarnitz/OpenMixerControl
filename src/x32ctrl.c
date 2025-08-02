@@ -1,7 +1,7 @@
 /*
   Control software for Behringer X32 using OpenX32
   https://github.com/xn--nding-jua/OpenX32
-  v0.0.2, 22.07.2025
+  v0.0.3, 02.08.2025
 
   This software uses LVGL and the LVGL Linux Port to display a nice user-interface
   To compile the software just call "make" and a 32-bit ARM-binary should be created
@@ -25,12 +25,15 @@ void timer10msCallback(int sig, siginfo_t *si, void *uc) {
   // call EEZ-GUI tick
   ui_tick();
 
-  // reads data from surface and calls surfaceCallback()
-  uartRead();
+  // read data from surface and calls surfaceCallback()
+  surfaceProcessUartData(uartRx(&fdSurface, &uartBufferSurface[0], sizeof(uartBufferSurface)));
+
+  // read data from ADDA-Boards (8ch input/output)
+  addaProcessUartData(uartRx(&fdAdda, &uartBufferAdda[0], sizeof(uartBufferAdda)));
 }
 
-void surfaceInit() {
-	// set brightness and contrast
+void surfaceDemo(void) {
+    // set brightness and contrast
     printf("  Setting brightness and contrast for all displays...\n");
     setBrightness(0, 255); // brightness of LEDs
     setBrightness(1, 255);
@@ -152,11 +155,22 @@ void surfaceCallback(uint8_t boardId, uint8_t class, uint8_t index, uint16_t val
   }
 }
 
+
+void addaCallback(char *msg) {
+    if ((strlen(msg) == 4) && (msg[2] == 'Y')) {
+        // we received acknowledge-message like *1Y# -> ignore it
+    }else{
+        // we received other messages -> print them
+        printf("ADDA Message: %s\n", msg);
+        lv_label_set_text_fmt(objects.debugtext, "ADDA Message: %s\n", msg);
+    }
+}
+
 // the main-function - of course
 int main() {
     srand(time(NULL));
     printf("OpenX32 UserInterface\n");
-    printf("v0.0.2, 31.07.2025\n");
+    printf("v0.0.3, 02.08.2025\n");
     printf("https://github.com/xn--nding-jua/OpenX32\n");
 
     printf("Reading config...");
@@ -182,11 +196,23 @@ int main() {
     printf(" Detected model: %s with Serial %s built on %s\n", model, serial, date);
 
     printf("Connecting to UART1...\n");
-    uartOpen();
+    uartOpen("/dev/ttymxc1", 115200, &fdSurface);
+
+    printf("Connecting to UART2...\n");
+    uartOpen("/dev/ttymxc2", 38400, &fdAdda);
 
     printf("Initializing X32 Surface...\n");
     //surfaceReset(); // resets all microcontrollers on the board
-    surfaceInit(); // sets default values for faders, leds and lcds
+    //surfaceInit(); // initialize whole surface with default values
+    surfaceDemo(); // sets demo-values for faders, leds and lcds
+
+    printf("Initializing Analog-Boards...\n");
+    addaInit(48000);
+    addaSetMute(false);
+    addaSetGain(1, 0, 15.5, true); // boardId, Channel, Gain in dB, +48V
+    addaSetGain(3, 1, 15.5, true); // boardId, Channel, Gain in dB, +48V
+    addaSetGain(0, 2, 15.5, true); // boardId, Channel, Gain in dB, +48V
+    addaSetGain(2, 3, 15.5, true); // boardId, Channel, Gain in dB, +48V
 
 /*
     printf("Start Timer...\n");
@@ -195,7 +221,9 @@ int main() {
     printf("Wait for incoming data on /dev/ttymxc1...\n");
     printf("Press Ctrl+C to terminate program.\n");
     while (1) {
-      uartRead();
+	  surfaceProcessUartData(uartRx(&fdSurface, &uartBufferSurface, sizeof(uartBufferSurface)));
+
+	  addaProcessUartData(uartRx(&fdAdda, &uartBufferAdda, sizeof(uartBufferAdda)));
 
       // sleep for 1ms to lower CPU-load
       usleep(1000);

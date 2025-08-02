@@ -1,6 +1,7 @@
 #include "surface.h"
 
-messageBuilder message;
+char uartBufferSurface[256]; // buffer for UART-readings
+uint8_t receivedBoardId = 0;
 
 // boardId = 0, 1, 4, 5, 8
 // index = 0 ... 8
@@ -16,10 +17,10 @@ void setFader(uint8_t boardId, uint8_t index, uint16_t position) {
   messageBuilderAddDataByte(&message, 'F'); // class: F = Fader
   messageBuilderAddDataByte(&message, index); // index
   messageBuilderAddDataByte(&message, (position & 0xFF)); // LSB
-  messageBuilderAddDataByte(&message, (unsigned char)((position & 0x0F00) >> 8)); // MSB
+  messageBuilderAddDataByte(&message, (char)((position & 0x0F00) >> 8)); // MSB
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -43,7 +44,7 @@ void setLed(uint8_t boardId, uint8_t ledId, uint8_t state) {
   }
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // ledNr = Nr of the LED from constants.h (contains BoardId and LED-Nr)
@@ -70,7 +71,7 @@ void setLedByNr(uint16_t ledNr, uint8_t state) {
   }
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 
@@ -90,7 +91,7 @@ void setMeterLed(uint8_t boardId, uint8_t index, uint8_t leds) {
   messageBuilderAddDataByte(&message, leds);
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -132,7 +133,7 @@ void setEncoderRing(uint8_t boardId, uint8_t index, uint8_t ledMode, uint8_t led
   }
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -148,7 +149,7 @@ void setBrightness(uint8_t boardId, uint8_t brightness) {
   messageBuilderAddDataByte(&message, brightness);
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // boardId = 0, 1, 4, 5, 8
@@ -164,7 +165,7 @@ void setContrast(uint8_t boardId, uint8_t contrast) {
   messageBuilderAddDataByte(&message, contrast & 0x3F);
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // boardId = 0, 4, 5, 8
@@ -207,7 +208,7 @@ void setLcd(uint8_t boardId, uint8_t index, uint8_t color, uint8_t xicon, uint8_
 
   messageBuilderAddRawByte(&message, 0xFE); // endbyte
 
-  uartTxData(&message);
+  uartTx(&fdSurface, &message, true);
 }
 
 // bit 0=CCW, bit 6=center, bit 12 = CW, bit 15=encoder-backlight
@@ -339,11 +340,128 @@ uint16_t calcEncoderRingLedWidth(uint8_t pct) {
     return led_mask;
 }
 
-void surfaceReset() {
+void surfaceInit(void) {
+    // TODO initialize buttons, displays, faders, etc. here
+}
+
+void surfaceReset(void) {
     int fd = open("/sys/class/leds/reset_surface/brightness", O_WRONLY);
     write(fd, "1", 1);
     usleep(100 * 1000);
     write(fd, "0", 1);
     close(fd);
     usleep(2000 * 1000);
+}
+
+void surfaceProcessUartData(int bytesToProcess) {
+    uint8_t currentByte = 0;
+    uint8_t receivedClass = 0;
+    uint8_t receivedIndex = 0;
+    uint16_t receivedValue = 0;
+    //uint8_t receivedChecksum = 0;
+
+    int surfacePacketBufLen = 0;
+    char surfacePacketBuffer[SURFACE_MAX_PACKET_LENGTH];
+
+    if (bytesToProcess <= 0) {
+        return;
+	}
+
+    for (int i = 0; i < bytesToProcess; i++) {
+        currentByte = (uint8_t)uartBufferSurface[i];
+        //printf("%02X ", currentByte); // empfangene Bytes als HEX-Wert ausgeben
+
+        // add received byte to buffer
+        if (surfacePacketBufLen < SURFACE_MAX_PACKET_LENGTH) {
+            surfacePacketBuffer[surfacePacketBufLen++] = currentByte;
+        } else {
+            // buffer full -> remove oldest byte
+            memmove(surfacePacketBuffer, surfacePacketBuffer + 1, SURFACE_MAX_PACKET_LENGTH - 1);
+            surfacePacketBuffer[SURFACE_MAX_PACKET_LENGTH - 1] = currentByte;
+        }
+
+        // we are expecting two types of messages: long (standard) and short (repeating message)
+        // Short:                          Index + Value_LSB + 0xFE + CHECKSUM = 5 Bytes
+        // Short:                          Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 6 Bytes
+        // Long:  0xFE + BoardID + Class + Index + Value_LSB             + 0xFE + CHECKSUM = 7 Bytes
+        // Long:  0xFE + BoardID + Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
+        int receivedPacketLength = 0; // length of detected packet
+
+        // check if we received enought data to process at least the shortest message
+        if (surfacePacketBufLen >= 4) {
+            // check for expected end-sequence (0xFE CHECKSUM)
+            uint8_t offset = 0;
+            if ((surfacePacketBuffer[surfacePacketBufLen-2] != 0xFE) && (surfacePacketBuffer[surfacePacketBufLen-1] == 0xFE)) {
+                // this packet has no checksum!?
+                offset = 1;
+            }
+
+            if ((surfacePacketBuffer[surfacePacketBufLen - 2] == 0xFE) || (surfacePacketBuffer[surfacePacketBufLen - 1] == 0xFE)) {
+                // check for long 16-bit-packet (8 bytes)
+                // 0xFE + BoardID + Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
+                if (surfacePacketBufLen >= (8 - offset) && surfacePacketBuffer[surfacePacketBufLen - 8 + offset] == 0xFE) {
+                    receivedBoardId = surfacePacketBuffer[surfacePacketBufLen - 7 + offset] & 0x7F;
+                    receivedClass = surfacePacketBuffer[surfacePacketBufLen - 6 + offset];
+                    receivedIndex = surfacePacketBuffer[surfacePacketBufLen - 5 + offset];
+                    receivedValue = ((uint16_t)surfacePacketBuffer[surfacePacketBufLen - 3 + offset] << 8) | (uint16_t)surfacePacketBuffer[surfacePacketBufLen - 4 + offset];
+                    //receivedChecksum = surfacePacketBuffer[surfacePacketBufLen - 1];
+                    receivedPacketLength = 8 - offset;
+                }
+                // check for long 8-bit-packet (7 bytes)
+                // 0xFE + BoardID + Class + Index + Value_LSB             + 0xFE + CHECKSUM = 7 Bytes
+                else if ((surfacePacketBufLen >= (7 - offset)) && (surfacePacketBuffer[surfacePacketBufLen - 7 + offset] == 0xFE)) {
+                    receivedBoardId = surfacePacketBuffer[surfacePacketBufLen - 6 + offset] & 0x7F;
+                    receivedClass = surfacePacketBuffer[surfacePacketBufLen - 5 + offset];
+                    receivedIndex = surfacePacketBuffer[surfacePacketBufLen - 4 + offset];
+                    receivedValue = surfacePacketBuffer[surfacePacketBufLen - 3 + offset];
+                    //receivedChecksum = surfacePacketBuffer[surfacePacketBufLen - 1];
+                    receivedPacketLength = 7 - offset;
+                }
+                // check for short 16-bit-packet (6 bytes)
+                // Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
+                else if (surfacePacketBufLen >= (6 - offset)) {
+                    // 0xFE and BoardID is missing here
+                    receivedClass = surfacePacketBuffer[surfacePacketBufLen - 6 + offset];
+                    receivedIndex = surfacePacketBuffer[surfacePacketBufLen - 5 + offset];
+                    receivedValue = ((uint16_t)surfacePacketBuffer[surfacePacketBufLen - 3 + offset] << 8) | (uint16_t)surfacePacketBuffer[surfacePacketBufLen - 4 + offset];
+                    //receivedChecksum = surfacePacketBuffer[surfacePacketBufLen - 1];
+                    receivedPacketLength = 6 - offset;
+                }
+                // check for short 8-bit-packet (5 bytes)
+                // ID Value_MSB Value_LSB 0xFE CHECKSUM
+                else if (surfacePacketBufLen >= (5 - offset)) {
+                    // 0xFE and BoardID is missing here
+                    receivedClass = surfacePacketBuffer[surfacePacketBufLen - 5 + offset];
+                    receivedIndex = surfacePacketBuffer[surfacePacketBufLen - 4 + offset];
+                    receivedValue = surfacePacketBuffer[surfacePacketBufLen - 3 + offset];
+                    //receivedChecksum = surfacePacketBuffer[surfacePacketBufLen - 1];
+                    receivedPacketLength = 5 - offset;
+                }
+
+/*
+                // now recalculate the checksum and check against received one
+                char buf[receivedPacketLength];
+                for (uint8_t i=0; i<(receivedPacketLength-1); i++) {
+                    buf[i] = surfacePacketBuffer[surfacePacketBufLen - receivedPacketLength - i];
+                }
+                calculateChecksum(buf, sizeof(buf));
+                if ((receivedPacketLength > 0) && (receivedChecksum == buf[sizeof(buf)-1])) {
+                    surfaceCallback(receivedBoardId, receivedClass, receivedIndex, receivedValue);
+                }
+*/
+                if (receivedPacketLength > 0) {
+                    surfaceCallback(receivedBoardId, receivedClass, receivedIndex, receivedValue);
+
+                    // shift remaining bytes byte by processed amount of data
+                    memmove(surfacePacketBuffer, surfacePacketBuffer + receivedPacketLength, surfacePacketBufLen - receivedPacketLength);
+                    surfacePacketBufLen -= receivedPacketLength;
+                }
+                /*
+                if (surfacePacketBufLen > 0) {
+                  printf("Warnung: verbleibende Bytes im Puffer: %d\n", surfacePacketBufLen);
+                }
+                */
+            }
+        }
+    }
 }

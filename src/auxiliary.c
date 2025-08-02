@@ -16,7 +16,7 @@ int readConfig(const char *filename, const char *key, char *value_buffer, size_t
     size_t key_len = strlen(key);
     char search_pattern[key_len + 2];
     snprintf(search_pattern, sizeof(search_pattern), "%s", key);
-    
+
     // read file line by line
     while (fgets(line, sizeof(line), file) != NULL) {
         if (strncmp(line, search_pattern, strlen(search_pattern)) == 0) {
@@ -26,7 +26,7 @@ int readConfig(const char *filename, const char *key, char *value_buffer, size_t
             while (*value_start == ' ' || *value_start == '\t') {
                 value_start++;
             }
-            
+
             // remove unwanted characters from the end
             char *newline_pos = strchr(value_start, '\n');
             if (newline_pos != NULL) {
@@ -36,7 +36,7 @@ int readConfig(const char *filename, const char *key, char *value_buffer, size_t
             if (cr_pos != NULL) {
                 *cr_pos = '\0';
             }
-            
+
             // copy value to buffer
             size_t value_len = strlen(value_start);
             if (value_len >= buffer_size) {
@@ -53,6 +53,27 @@ int readConfig(const char *filename, const char *key, char *value_buffer, size_t
 
 	return found;
 }
+
+/*
+int valueToBinaryString(uint8_t value, char *output) {
+    if (value > 15) {
+        return -1;
+    }
+
+    // zero-terminate string
+    output[4] = '\0';
+
+    for (int i = 3; i >= 0; --i) {
+        if ((value >> i) & 1) {
+            output[3 - i] = '1';
+        } else {
+            output[3 - i] = '0';
+        }
+    }
+
+    return 0;
+}
+*/
 
 /*
 // variables

@@ -1,19 +1,15 @@
 #include "uart.h"
 
-// uart
-int fd;
-struct termios tty;
-char buffer_uart[256]; // Puffer für UART-Lesevorgänge
-ssize_t bytes_read;
-int bytes_available;
-uint8_t receivedBoardId;
+messageBuilder message;
+int fdSurface;
+int fdAdda;
 
 void messageBuilderInit(messageBuilder *message) {
     message->current_length = 0;
 }
 
 // allows writing a single byte to buffer without using byte-stuffing
-int messageBuilderAddRawByte(messageBuilder *message, unsigned char byte) {
+int messageBuilderAddRawByte(messageBuilder *message, char byte) {
     if (message->current_length >= MAX_MESSAGE_SIZE) {
         fprintf(stderr, "Error: Message buffer overflow when adding byte 0x%02X!\n", byte);
         return -1;
@@ -23,7 +19,7 @@ int messageBuilderAddRawByte(messageBuilder *message, unsigned char byte) {
 }
 
 // add a single byte to buffer using byte-stuffing
-int messageBuilderAddDataByte(messageBuilder *message, unsigned char byte) {
+int messageBuilderAddDataByte(messageBuilder *message, char byte) {
     // check if we have space left in message-buffer (max. 64 bytes for payload)
     if (message->current_length >= MAX_MESSAGE_SIZE) {
         fprintf(stderr, "Error: Message buffer overflow before adding data byte 0x%02X!\n", byte);
@@ -59,7 +55,7 @@ int messageBuilderAddString(messageBuilder *message, const char* str) {
 }
 
 // add a multiple bytes to buffer using byte-stuffing
-int messageBuilderAddDataArray(messageBuilder *message, const char* data, uint8_t len) {
+int messageBuilderAddDataArray(messageBuilder *message, const char *data, uint8_t len) {
     // check if we have space left in message-buffer (max. 64 bytes for payload)
     if (message->current_length >= MAX_MESSAGE_SIZE) {
         fprintf(stderr, "Error: Message buffer overflow before adding data!\n");
@@ -86,7 +82,7 @@ int messageBuilderAddDataArray(messageBuilder *message, const char* data, uint8_
 // incoming message has the form: 0xFE 0x8i Class Index Data[] 0xFE
 // Checksum is calculated using the following equation:
 // chksum = ( 0xFE - i - class - index - sumof(data[]) - sizeof(data[]) ) and 0x7F
-uint8_t calculateChecksum(const unsigned char *data, uint16_t len) {
+uint8_t calculateChecksum(const char *data, uint16_t len) {
   // a single message can contain up to max. 64 chars
   int32_t sum = 0xFE;
   for (uint8_t i = 0; i < (len-1); i++) {
@@ -98,34 +94,18 @@ uint8_t calculateChecksum(const unsigned char *data, uint16_t len) {
   return (sum & 0x7F);
 }
 
-int uartTxData(messageBuilder *message) {
-    if (fd < 0) {
-        fprintf(stderr, "Error: Problem on opening serial port\n");
-        return -1;
-    }
+int uartOpen(char *ttydev, uint32_t baudrate, int *fd) {
+    struct termios tty;
 
-    unsigned char checksum = 0;
-    if (message->current_length >= 2) { // at least start- and end-byte
-        checksum = calculateChecksum(message->buffer, message->current_length);
-    }
-
-    // add checksum to message and send data via serial-port
-    messageBuilderAddRawByte(message, checksum);
-    int bytes_written = write(fd, message->buffer, message->current_length);
-
-    return bytes_written;
-}
-
-int uartOpen() {
-    fd = open("/dev/ttymxc1", O_RDWR | O_NOCTTY | O_NDELAY);
-    if (fd < 0) {
-        perror("Error opening /dev/ttymxc1 !");
+    *fd = open(ttydev, O_RDWR | O_NOCTTY | O_NDELAY);
+    if (*fd < 0) {
+        perror("Error opening serial-port!");
         return 1;
     }
 
-    if (tcgetattr(fd, &tty) != 0) {
+    if (tcgetattr(*fd, &tty) != 0) {
         perror("Error reading serial-port-attributes!");
-        close(fd);
+        close(*fd);
         return 1;
     }
 
@@ -142,140 +122,66 @@ int uartOpen() {
     tty.c_cc[VMIN] = 0; // Nicht blockierend lesen
     tty.c_cc[VTIME] = 0;
 
-    cfsetispeed(&tty, B115200);
-    cfsetospeed(&tty, B115200);
+    if (baudrate == 115200) {
+        cfsetispeed(&tty, B115200);
+        cfsetospeed(&tty, B115200);
+    } else if (baudrate == 38400) {
+        cfsetispeed(&tty, B38400);
+        cfsetospeed(&tty, B38400);
+    } else {
+        perror("Error: unsupported baudrate!");
+        return 1;
+    }
 
-    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+    if (tcsetattr(*fd, TCSANOW, &tty) != 0) {
         perror("Error setting serial-port-attributes!");
-        close(fd);
+        close(*fd);
         return 1;
     }
 
     return 0;
 }
 
-int uartRead() {
-    uint8_t receivedClass = 0;
-    uint8_t receivedIndex = 0;
-    uint16_t receivedValue = 0;
-    //uint8_t receivedChecksum = 0;
-    uint8_t currentByte;
-    uint8_t packet_buffer[MAX_BUFFER_SIZE];
-    int packet_buffer_len = 0;
+int uartTx(int *fd, messageBuilder *message, bool addChecksum) {
+    if (*fd < 0) {
+        fprintf(stderr, "Error: Problem on opening serial port\n");
+        return -1;
+    }
 
-	if (ioctl(fd, FIONREAD, &bytes_available) == -1) {
+    if (addChecksum) {
+        char checksum = 0;
+        if (message->current_length >= 2) { // at least start- and end-byte
+            checksum = calculateChecksum(message->buffer, message->current_length);
+        }
+
+        // add checksum to message and send data via serial-port
+        messageBuilderAddRawByte(message, checksum);
+    }
+    int bytes_written = write(*fd, message->buffer, message->current_length);
+
+    return bytes_written;
+}
+
+int uartRx(int *fd, char *buf, uint16_t bufLen) {
+    int bytesRead;
+    int bytesAvailable;
+
+	if (ioctl(*fd, FIONREAD, &bytesAvailable) == -1) {
 		perror("Error on ioctl FIONREAD");
-		close(fd);
+		close(*fd);
 		return 1;
 	}
 
-	if (bytes_available > 0) {
-		bytes_read = read(fd, buffer_uart, (bytes_available < sizeof(buffer_uart)) ? bytes_available : sizeof(buffer_uart));
+	if (bytesAvailable > 0) {
+		bytesRead = read(*fd, buf, (bytesAvailable < bufLen) ? bytesAvailable : bufLen);
 
-		if (bytes_read < 0) {
+		if (bytesRead < 0) {
 			perror("Error reading from serial-port");
-			close(fd);
-			return 1;
-		} else if (bytes_read > 0) {
-			for (int i = 0; i < bytes_read; i++) {
-				currentByte = (uint8_t)buffer_uart[i];
-				//printf("%02X ", currentByte); // empfangene Bytes als HEX-Wert ausgeben
-
-				// add received byte to buffer
-				if (packet_buffer_len < MAX_BUFFER_SIZE) {
-					packet_buffer[packet_buffer_len++] = currentByte;
-				} else {
-					// buffer full -> remove oldest byte
-					memmove(packet_buffer, packet_buffer + 1, MAX_BUFFER_SIZE - 1);
-					packet_buffer[MAX_BUFFER_SIZE - 1] = currentByte;
-				}
-
-				// we are expecting two types of messages: long (standard) and short (repeating message)
-				// Short:                          Index + Value_LSB + 0xFE + CHECKSUM = 5 Bytes
-				// Short:                          Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 6 Bytes
-				// Long:  0xFE + BoardID + Class + Index + Value_LSB             + 0xFE + CHECKSUM = 7 Bytes
-				// Long:  0xFE + BoardID + Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
-				int receivedPacketLength = 0; // Länge des erkannten Pakets
-
-				// check if we received enought data to process at least the shortest message
-				if (packet_buffer_len >= 4) {
-					// check for expected end-sequence (0xFE CHECKSUM)
-					uint8_t offset = 0;
-					if ((packet_buffer[packet_buffer_len-2] != 0xFE) && (packet_buffer[packet_buffer_len-1] == 0xFE)) {
-						// this packet has no checksum!?
-						offset = 1;
-					}
-
-					if ((packet_buffer[packet_buffer_len - 2] == 0xFE) || (packet_buffer[packet_buffer_len - 1] == 0xFE)) {
-						// check for long 16-bit-packet (8 bytes)
-						// 0xFE + BoardID + Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
-						if (packet_buffer_len >= (8 - offset) && packet_buffer[packet_buffer_len - 8 + offset] == 0xFE) {
-							receivedBoardId = packet_buffer[packet_buffer_len - 7 + offset] & 0x7F;
-							receivedClass = packet_buffer[packet_buffer_len - 6 + offset];
-							receivedIndex = packet_buffer[packet_buffer_len - 5 + offset];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3 + offset] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4 + offset];
-							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 8 - offset;
-						}
-						// check for long 8-bit-packet (7 bytes)
-						// 0xFE + BoardID + Class + Index + Value_LSB             + 0xFE + CHECKSUM = 7 Bytes
-						else if ((packet_buffer_len >= (7 - offset)) && (packet_buffer[packet_buffer_len - 7 + offset] == 0xFE)) {
-							receivedBoardId = packet_buffer[packet_buffer_len - 6 + offset] & 0x7F;
-							receivedClass = packet_buffer[packet_buffer_len - 5 + offset];
-							receivedIndex = packet_buffer[packet_buffer_len - 4 + offset];
-							receivedValue = packet_buffer[packet_buffer_len - 3 + offset];
-							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 7 - offset;
-						}
-						// check for short 16-bit-packet (6 bytes)
-						// Class + Index + Value_LSB + Value_MSB + 0xFE + CHECKSUM = 8 Bytes
-						else if (packet_buffer_len >= (6 - offset)) {
-							// 0xFE and BoardID is missing here
-							receivedClass = packet_buffer[packet_buffer_len - 6 + offset];
-							receivedIndex = packet_buffer[packet_buffer_len - 5 + offset];
-							receivedValue = ((uint16_t)packet_buffer[packet_buffer_len - 3 + offset] << 8) | (uint16_t)packet_buffer[packet_buffer_len - 4 + offset];
-							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 6 - offset;
-						}
-						// check for short 8-bit-packet (5 bytes)
-						// ID Value_MSB Value_LSB 0xFE CHECKSUM
-						else if (packet_buffer_len >= (5 - offset)) {
-							// 0xFE and BoardID is missing here
-							receivedClass = packet_buffer[packet_buffer_len - 5 + offset];
-							receivedIndex = packet_buffer[packet_buffer_len - 4 + offset];
-							receivedValue = packet_buffer[packet_buffer_len - 3 + offset];
-							//receivedChecksum = packet_buffer[packet_buffer_len - 1];
-							receivedPacketLength = 5 - offset;
-						}
-
-/*
-						// now recalculate the checksum and check against received one
-						unsigned char buf[receivedPacketLength];
-						for (uint8_t i=0; i<(receivedPacketLength-1); i++) {
-							buf[i] = packet_buffer[packet_buffer_len - receivedPacketLength - i];
-						}
-						calculateChecksum(buf, sizeof(buf));
-						if ((receivedPacketLength > 0) && (receivedChecksum == buf[sizeof(buf)-1])) {
-							surfaceCallback(receivedBoardId, receivedClass, receivedIndex, receivedValue);
-						}
-*/
-						if (receivedPacketLength > 0) {
-							surfaceCallback(receivedBoardId, receivedClass, receivedIndex, receivedValue);
-						}
-						/*
-						if (packet_buffer_len > 0) {
-						  printf("Warnung: verbleibende Bytes im Puffer: %d\n", packet_buffer_len);
-						}
-						*/
-
-						// shift remaining bytes byte by processed amount of data
-						memmove(packet_buffer, packet_buffer + receivedPacketLength, packet_buffer_len - receivedPacketLength);
-						packet_buffer_len -= receivedPacketLength;
-					}
-				}
-			}
-			fflush(stdout);
+			close(*fd);
+			return -1;
 		}
+
+		return bytesRead;
 	}
 
 	return 0;
