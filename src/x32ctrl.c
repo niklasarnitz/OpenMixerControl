@@ -90,6 +90,9 @@ void surfaceDemo(void) {
       setMeterLed(8, i, 0b01111111);
     }
 
+    // preamp, dynamics, meterL, meterR, meterSolo
+    setMeterLedMain(0b00000111, 0b11100001, 0x0FFFFF, 0x0FFFFF, 0x000FFF);
+
     // set some encoders with different options
     for (uint8_t i=0; i<=100; i++) {
       setEncoderRing(0, 0, 0, i, true); // boardId, index, ledMode, ledPct, backlight

@@ -94,6 +94,37 @@ void setMeterLed(uint8_t boardId, uint8_t index, uint8_t leds) {
   uartTx(&fdSurface, &message, true);
 }
 
+// leds = 8-bit bitwise (bit 0=-60dB ... 4=-6dB, 5=Clip, 6=Gate, 7=Comp)
+// leds = 32-bit bitwise (bit 0=-57dB ... 22=-2, 23=-1, 24=Clip)
+void setMeterLedMain(uint8_t preamp, uint8_t dynamics, uint32_t meterL, uint32_t meterR, uint32_t meterSolo) {
+  // 0xFE, 0x8i, class, index, data[], 0xFE, chksum
+  // 0x4C, index, leds.b[]
+
+  messageBuilderInit(&message);
+
+  messageBuilderAddRawByte(&message, 0xFE); // startbyte
+  messageBuilderAddDataByte(&message, 0x80 + 1); // start message for specific boardId
+  messageBuilderAddDataByte(&message, 'M'); // class: M = Meter
+  messageBuilderAddDataByte(&message, 0); // index
+  messageBuilderAddDataByte(&message, preamp);
+  messageBuilderAddDataByte(&message, dynamics);
+  messageBuilderAddDataByte(&message, (uint8_t)meterL);
+  messageBuilderAddDataByte(&message, (uint8_t)(meterL>>8));
+  messageBuilderAddDataByte(&message, (uint8_t)(meterL>>16));
+  messageBuilderAddDataByte(&message, 0x00);
+  messageBuilderAddDataByte(&message, (uint8_t)meterR);
+  messageBuilderAddDataByte(&message, (uint8_t)(meterR>>8));
+  messageBuilderAddDataByte(&message, (uint8_t)(meterR>>16));
+  messageBuilderAddDataByte(&message, 0x00);
+  messageBuilderAddDataByte(&message, (uint8_t)meterSolo);
+  messageBuilderAddDataByte(&message, (uint8_t)(meterSolo>>8));
+  messageBuilderAddDataByte(&message, (uint8_t)(meterSolo>>16));
+  messageBuilderAddDataByte(&message, 0x00);
+  messageBuilderAddRawByte(&message, 0xFE); // endbyte
+
+  uartTx(&fdSurface, &message, true);
+}
+
 // boardId = 0, 1, 4, 5, 8
 // index
 // ledMode = 0=increment, 1=absolute position, 2=balance l/r, 3=width/spread
