@@ -68,6 +68,8 @@ typedef unsigned int uint;
 
 #define VOLUME_MIN         -100.0f // dB
 
+#define CHANNEL_NAME_MAX_LENGTH 8 // TODO: Enlarge VKeyboard to 16 Channelstrips
+
 #define CHANNEL_GAIN_MIN            -18.0f // dB
 #define CHANNEL_GAIN_MAX             60.0f // dB <- real hardware goes only between -2.0 and +45.0 but we allow additional trim
 #define CHANNEL_PANORAMA_MIN       -100.0f // dB

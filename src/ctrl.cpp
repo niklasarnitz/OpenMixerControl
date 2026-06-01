@@ -2569,22 +2569,6 @@ void X32Ctrl::ProcessSurface(X32_BOARD board, uint8_t classid, uint8_t index, ui
 				surface->FaderMoved((uint)board, index, value);
 				break;
 			case MixerparameterAction::DMX:
-				// a fader is moved
-
-				// // currently we are not using mixer-parameters as we have not enough
-				// // mixerchannels for all 512 DMX-channels
-				// // so we are using a dummy-mixerparameter to get the changes
-				// // and use a manual offeset to write the values to the ArtNet-Output
-
-				// uint16_t offset = config->GetUint(DMX_ARTNET_OFFSET);
-				// if (board == X32_BOARD_L) {
-				// 	offset += 0;
-				// }else if (board == X32_BOARD_M) {
-				// 	offset += 8; // only on Fullsize
-				// }else if (board == X32_BOARD_R) {
-				// 	offset += (config->IsModelX32Full() ? 16 : 8);
-				// }
-				// artnet->SetChannel(index + offset, (float)value * (255.0f/4095.0f), 0);
 				config->Set(bindingParameter->mp_id, helper->Fadervalue2DMX(value), bindingParameter->mp_index);
 				surface->FaderMoved((uint)board, index, value);
 				break;
@@ -2784,6 +2768,39 @@ void X32Ctrl::ProcessSurface(X32_BOARD board, uint8_t classid, uint8_t index, ui
 						default:
 							break;
 					}
+				}
+			}
+		}
+		else if (buttonPressed && buttonPressed->GetId() == SurfaceElementId::TALK_A)
+		{
+			// DEBUG VKeyboard
+			{
+				String chan = config->GetParameter(CHANNEL_NAME)->GetString(config->GetUint(SELECTED_CHANNEL));
+
+				for (uint i = 0; i < (chan.length() <= 8 ? chan.length() : 8); i++)
+				{
+					LcdData* data = new LcdData();
+					uint textcount = 0;
+					uint textIndex = 0;
+
+					data->boardId = X32_BOARD::X32_BOARD_R;
+					data->color = (uint)X32_COLOR::WHITE | SURFACE_COLOR_INVERTED;
+					data->lcdIndex = i;
+					data->icon.icon = 0;
+					data->icon.x = 0;
+					data->icon.y = 0;
+
+					textIndex++;
+
+					data->texts[textIndex].text = String(chan[i]);
+					data->texts[textIndex].size = 0x20;
+					data->texts[textIndex].x = x;
+					data->texts[textIndex].y = 22;
+					
+					textcount = textIndex + 1;
+
+					surface->SetLcdX(data, textcount);
+					delete data;
 				}
 			}
 		}

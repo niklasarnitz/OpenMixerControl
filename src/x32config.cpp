@@ -416,6 +416,20 @@ void X32Config::DefineMixerparameters() {
     ->DefHideEncoderReset()
     ->DefMinMaxStandard_Uint(0, 2, 0);
 
+    // Virtual keyboard on surface, as a prototype just on the Bus Section
+
+    DefParameter(VKEYBOARD_ACTIVE, cat, "Virtual Keyboard Active")
+    ->DefNoConfig()
+    ->DefStandard_Bool(false);
+
+    DefParameter(VKEYBOARD_STRING, cat, "Virtual Keyboard", CHANNEL_NAME_MAX_LENGTH)
+    ->DefNoConfig()
+    ->DefStandard_String();
+
+    DefParameter(VKEYBOARD_VKEYS, cat, "Virtual Keyboard VKeys", CHANNEL_NAME_MAX_LENGTH * 2)
+    ->DefNoConfig()
+    ->DefStandard_Bool(false);
+
     // ###########
     // # Display
     // ###########

@@ -536,6 +536,10 @@ enum class MP_ID {
     DISPLAY_UP,
     DISPLAY_DOWN,
 
+    VKEYBOARD_ACTIVE,
+    VKEYBOARD_STRING,
+    VKEYBOARD_VKEYS,
+
     // Global
 
     MONITOR_VOLUME,
