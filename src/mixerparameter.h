@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <vector>
-#include "WString.h"
+#include "../lib/WString.h"
 #include "glaze/glaze.hpp"
 #include "math.h"
 

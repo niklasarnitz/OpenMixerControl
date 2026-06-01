@@ -42,12 +42,12 @@
 #include "surfacebindingparameter.h"
 
 // Commandline and config file parser CLI11 (https://github.com/CLIUtils/CLI11)
-#include "CLI11.hpp"
+#include "../lib/CLI11.hpp"
 
 // includes for lvgl
-#include "lv_port_linux/lvgl/lvgl.h"
-#include "lv_port_linux/src/lib/backends.h"
-#include "lv_port_linux/src/lib/driver_backends.h"
+#include "../lib/lv_port_linux/lvgl/lvgl.h"
+#include "../lib/lv_port_linux/src/lib/backends.h"
+#include "../lib/lv_port_linux/src/lib/driver_backends.h"
 
 // including the GUI built by EEZ-Studio
 #include "eez/src/ui/actions.h"
@@ -59,7 +59,7 @@
 #include "eez/src/ui/ui.h"
 #include "eez/src/ui/vars.h"
 
-#include "tinyosc.h"
+#include "../lib/tinyosc.h"
 
 using namespace std;
 

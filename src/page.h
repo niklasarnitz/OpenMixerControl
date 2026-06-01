@@ -9,7 +9,7 @@
 #include "mixer.h"
 #include "pagebindings.h"
 
-#include "lv_port_linux/lvgl/lvgl.h"
+#include "../lib/lv_port_linux/lvgl/lvgl.h"
 #include "eez/src/ui/screens.h"
 #include "eez/src/ui/images.h"
 #include "eez/src/ui/styles.h"

@@ -2,7 +2,7 @@
 
 #include "base.h"
 #include "types.h"
-#include "WString.h"
+#include "../lib/WString.h"
 #include "uart.h"
 #include "adda-message.h"
 

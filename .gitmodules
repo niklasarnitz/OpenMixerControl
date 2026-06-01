@@ -4,3 +4,6 @@
 [submodule "lib/glaze"]
 	path = lib/glaze
 	url = https://github.com/stephenberry/glaze.git
+[submodule "lib/libartnet"]
+	path = lib/libartnet
+	url = https://github.com/OpenLightingProject/libartnet.git

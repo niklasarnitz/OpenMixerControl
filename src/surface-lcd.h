@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "WString.h"
+#include "../lib/WString.h"
 
 class LcdText {
     public:

@@ -2,7 +2,7 @@
 
 #include "external.h"
 #include "enum.h"
-#include "WString.h"
+#include "../lib/WString.h"
 
 using namespace std;
 

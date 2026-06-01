@@ -5,7 +5,7 @@
 #include <set>
 
 #include "types.h"
-#include "WString.h"
+#include "../lib/WString.h"
 #include "glaze/glaze.hpp"
 
 #include "helper.h"

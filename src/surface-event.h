@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "defines.h"
 #include "types.h"
-#include "WString.h"
+#include "../lib/WString.h"
 
 class SurfaceEvent{
     public:

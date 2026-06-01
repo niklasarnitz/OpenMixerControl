@@ -8,10 +8,10 @@ CXX             = arm-linux-gnueabi-g++
 AR              = arm-linux-gnueabi-ar
 LD              = arm-linux-gnueabi-ld
 
-LVGL_DIR_NAME   ?= lvgl
-LVGL_DIR        ?= ./lv_port_linux
+LIB_DIR			= ../lib
+LVGL_DIR        ?= ../lib/lv_port_linux
 LVGL_PATH       = demosAreDisabledByThisHack
-GLAZE_PATH		= ./lib
+GLAZE_PATH		= ../lib/glaze/include
 
 WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-error=strict-prototypes -Wpointer-arith \
                    -fno-strict-aliasing -Wno-error=cpp -Wuninitialized -Wmaybe-uninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wtype-limits \
@@ -22,8 +22,8 @@ WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-erro
 DEPFLAGS        = -MMD -MP
 
 # normal build
-CFLAGS          ?= -std=c11 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
-CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+CFLAGS          ?= -std=c11 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR) -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR) -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 # debug build
 #CFLAGS          ?= -std=c11 -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
@@ -40,18 +40,22 @@ prefix          ?= /usr
 bindir          ?= $(prefix)/bin
 
 # Collect source files recursively
-CSRCS           := $(shell find \
-                        -path './lv_port_linux/example' -prune -o \
-                        -path './lv_port_linux/lvgl/demos' -prune -o \
-                        -path './lv_port_linux/lvgl/examples' -prune -o \
-                        -path './lv_port_linux/lvgl/tests' -prune -o \
-			-type f -name '*.c' -not -path './lv_port_linux/src/main.c' -print)
-CXXSRCS         := $(shell find \
-                        -path './lv_port_linux/example' -prune -o \
-                        -path './lv_port_linux/lvgl/demos' -prune -o \
-                        -path './lv_port_linux/lvgl/examples' -prune -o \
-                        -path './lv_port_linux/lvgl/tests' -prune -o \
-			-type f -name '*.cpp' -not -path './lv_port_linux/src/main.c' -print)
+CSRCS           := $(shell find -type f -name '*.c' -print) \
+			 	   $(shell find ../lib \
+						-path '../lib/lv_port_linux/example' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/tests' -prune -o \
+						-path '../lib/glaze' -prune -o \
+					  -type f -name '*.c' -not -path '../lib/lv_port_linux/src/main.c' -print)
+CXXSRCS         := $(shell find -type f -name '*.cpp' -print) \
+				   $(shell find ../lib \
+						-path '../lib/lv_port_linux/example' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/tests' -prune -o \
+						-path '../lib/glaze' -prune -o \
+					  -type f -name '*.cpp' -not -path '../lib/lv_port_linux/src/main.c' -print)
 
 all: copy default
 
@@ -85,12 +89,26 @@ $(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
 	@echo "AS  $<"
 
 copy:
-	cp Makefile.lvgl lv_port_linux/Makefile
-	@if ! diff -q lv_conf.h lv_port_linux/lv_conf.h >/dev/null 2>&1; then \
-		cp lv_conf.h lv_port_linux/lv_conf.h; \
-		echo "Update lv_port_linux/lv_conf.h (changed content)"; \
+	cp ../files/Makefile.lvgl $(LVGL_DIR)/Makefile
+	@if ! diff -q ../files/lv_conf.h $(LVGL_DIR)/lv_conf.h >/dev/null 2>&1; then \
+		cp ../files/lv_conf.h $(LVGL_DIR)/lv_conf.h; \
+		echo "Update $(LVGL_DIR)/lv_conf.h (changed content)"; \
 	else \
 		echo "lv_conf.h is up to date."; \
+	fi
+
+	@if ! diff -q ../files/lv_conf.h lv_conf.h >/dev/null 2>&1; then \
+		cp ../files/lv_conf.h lv_conf.h; \
+		echo "Update $(LVGL_DIR)/lv_conf.h (changed content)"; \
+	else \
+		echo "lv_conf.h is up to date."; \
+	fi
+
+	@if ! diff -q ../files/libartnet_network.c ../lib/libartnet/artnet/network.c >/dev/null 2>&1; then \
+		cp ../files/libartnet_network.c ../lib/libartnet/artnet/network.c; \
+		echo "Update ../lib/libartnet/artnet/network.c (changed content)"; \
+	else \
+		echo "../lib/libartnet/artnet/network.c is up to date."; \
 	fi
 
 default: $(TARGET)

@@ -4,7 +4,7 @@
 
 #include "defines.h"
 #include "enum.h"
-#include "WString.h"
+#include "../lib/WString.h"
 
 #include "mixerparameter.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CLI11.hpp"
+#include "../lib/CLI11.hpp"
 #include "x32config.h"
 #include "state.h"
 #include "helper.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "WString.h"
+#include "../lib/WString.h"
 #include "base.h"
 #include "uart.h"
 #include "message-base.h"

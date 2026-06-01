@@ -3,7 +3,7 @@
 #include <chrono>
 #include <stdint.h>
 #include "defines.h"
-#include "WString.h"
+#include "../lib/WString.h"
 #include "helper.h"
 
 // Class for holding only "temporary" state data during runtime

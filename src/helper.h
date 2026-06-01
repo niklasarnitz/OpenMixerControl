@@ -15,11 +15,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "lib/plf_nanotimer.h"
+#include "../lib/plf_nanotimer.h"
 
 #include "defines.h"
 #include "enum.h"
-#include "WString.h"
+#include "../lib/WString.h"
 
 
 #define DEBUGLEVEL_OFF -1 // No Debug
