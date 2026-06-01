@@ -31,7 +31,7 @@ CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)
 
 LDFLAGS         ?= -flto=auto -lm -lrt -lpthread -lartnet
 
-BIN             = x32ctrl
+BIN             = omc
 BUILD_DIR       = ../build
 BUILD_OBJ_DIR   = $(BUILD_DIR)/obj
 BUILD_BIN_DIR   = $(BUILD_DIR)

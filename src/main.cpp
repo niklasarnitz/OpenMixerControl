@@ -133,7 +133,7 @@ void guiInit(X32Config* config) {
 
 		#ifdef BODYLESS_SDL2
 		display = lv_sdl_window_create(DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y);		
-	 	lv_sdl_window_set_title(display, "OpenX32 - x32ctrl - Development Simulator");
+	 	lv_sdl_window_set_title(display, "OpenX32 - omc - Development Simulator");
 		keyboard = lv_sdl_keyboard_create();
 		//mouse = lv_sdl_mouse_create();
 		//mouse_wheel = lv_sdl_mousewheel_create();
@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
     state = new State();
 
 	app = new CLI::App();
-	app->description("OpenX32 Main Control");
+	app->description("Open Mixer Control");
 	argv = app->ensure_utf8(argv);
 
 	// Command line options
@@ -256,7 +256,7 @@ int main(int argc, char* argv[]) {
 		->check(CLI::IsMember(new set<uint32_t>{41000, 48000}));
 
 	// debugging commandline option	
-	app->add_flag("-b,--bodyless", state->bodyless, "Enables a special mode to run x32ctrl in a different enviroment than a X32 mixer.")
+	app->add_flag("-b,--bodyless", state->bodyless, "Enables a special mode to run omc in a different enviroment than a X32 mixer.")
 			->configurable(false)
 			->group("Debug");
 
