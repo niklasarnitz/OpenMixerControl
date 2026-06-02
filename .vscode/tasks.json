@@ -7,9 +7,13 @@
             "options": {
                 "cwd": "src"
             },
-            "problemMatcher": [
-                "$gcc"
-            ],
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation":[
+                    "relative",
+                    "${workspaceFolder}/src"
+                ]
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
