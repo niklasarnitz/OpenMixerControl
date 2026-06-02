@@ -10,7 +10,7 @@
 #include "wsm.h"
 
 #if ENABLE_ARTNET
-    #include "../lib/libartnet/artnet/artnet.h"
+    #include "artnet.h"
 #endif
 
 #include "page.h"

@@ -12,6 +12,7 @@ LIB_DIR			= ../lib
 LVGL_DIR        ?= ../lib/lv_port_linux
 LVGL_PATH       = demosAreDisabledByThisHack
 GLAZE_PATH		= ../lib/glaze/include
+ARTNET_PATH		= ../lib/libartnet/artnet
 
 WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-error=strict-prototypes -Wpointer-arith \
                    -fno-strict-aliasing -Wno-error=cpp -Wuninitialized -Wmaybe-uninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wtype-limits \
@@ -22,8 +23,8 @@ WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-erro
 DEPFLAGS        = -MMD -MP
 
 # normal build
-CFLAGS          ?= -std=c11 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
-CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+CFLAGS          ?= -std=c11 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ -I$(ARTNET_PATH)/ $(WARNINGS) $(DEPFLAGS)
+CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ -I$(ARTNET_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 # debug build
 #CFLAGS          ?= -std=c11 -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
@@ -90,7 +91,7 @@ $(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
 
 copy:
 	cp ../files/Makefile.lvgl $(LVGL_DIR)/Makefile
-	
+
 	@if ! diff -q ../files/lv_conf.h $(LVGL_DIR)/lv_conf.h >/dev/null 2>&1; then \
 		cp ../files/lv_conf.h $(LVGL_DIR)/lv_conf.h; \
 		echo "Update $(LVGL_DIR)/lv_conf.h (changed content)"; \
