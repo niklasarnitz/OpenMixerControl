@@ -424,7 +424,7 @@ void X32Config::DefineMixerparameters() {
 
     DefParameter(VKEYBOARD_STRING, cat, "Virtual Keyboard", CHANNEL_NAME_MAX_LENGTH)
     ->DefNoConfig()
-    ->DefStandard_String();
+    ->DefStandard_String("");
 
     DefParameter(VKEYBOARD_VKEYS, cat, "Virtual Keyboard VKeys", CHANNEL_NAME_MAX_LENGTH * 2)
     ->DefNoConfig()

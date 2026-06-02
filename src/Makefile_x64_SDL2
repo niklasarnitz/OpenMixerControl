@@ -37,8 +37,8 @@ ifeq ($(UNAME_S),Linux)
     WARNINGS += -Wmaybe-uninitialized -Wclobbered -Wstack-usage=2048
 endif
 
-BIN             = x32ctrl
-BUILD_DIR       = ../bin
+BIN             = omc
+BUILD_DIR       = ../build
 BUILD_OBJ_DIR   = $(BUILD_DIR)/obj
 BUILD_BIN_DIR   = $(BUILD_DIR)
 
@@ -48,6 +48,7 @@ bindir          ?= $(prefix)/bin
 # Collect source files recursively (macOS and Linux compatible find)
 CSRCS           := $(shell find . -type f -name '*.c' -print) \
                    $(shell find ../lib \
+                        -path '../lib/libartnet' -prune -o \
                         -path '../lib/lv_port_linux/example' -prune -o \
                         -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
                         -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
@@ -57,6 +58,7 @@ CSRCS           := $(shell find . -type f -name '*.c' -print) \
 
 CXXSRCS         := $(shell find . -type f -name '*.cpp' -print) \
                    $(shell find ../lib \
+                        -path '../lib/libartnet' -prune -o \
                         -path '../lib/lv_port_linux/example' -prune -o \
                         -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
                         -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
@@ -96,6 +98,8 @@ $(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
 	@echo "AS  $<"
 
 copy:
+	cp ../files/Makefile.lvgl $(LVGL_DIR)/Makefile
+
 	@if ! diff -q ../files/lv_conf_SDL2.h $(LVGL_DIR)/lv_conf.h >/dev/null 2>&1; then \
 		cp ../files/lv_conf_SDL2.h $(LVGL_DIR)/lv_conf.h; \
 		echo "Update $(LVGL_DIR)/lv_conf.h (changed content)"; \
@@ -108,6 +112,13 @@ copy:
 		echo "Update lv_conf.h (changed content)"; \
 	else \
 		echo "lv_conf.h is up to date."; \
+	fi
+
+	@if ! diff -q ../files/libartnet_network.c ../lib/libartnet/artnet/network.c >/dev/null 2>&1; then \
+		cp ../files/libartnet_network.c ../lib/libartnet/artnet/network.c; \
+		echo "Update ../lib/libartnet/artnet/network.c (changed content)"; \
+	else \
+		echo "../lib/libartnet/artnet/network.c is up to date."; \
 	fi
 
 default: $(TARGET)
