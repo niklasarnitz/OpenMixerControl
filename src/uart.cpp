@@ -88,6 +88,7 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     } else if (baudrate == 115200) {
         cfsetispeed(&tty, B115200);
         cfsetospeed(&tty, B115200);
+#ifndef __APPLE__
     } else if (baudrate == 500000) {
         cfsetispeed(&tty, B500000);
         cfsetospeed(&tty, B500000);
@@ -115,6 +116,7 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     } else if (baudrate == 4000000) {
         cfsetispeed(&tty, B4000000);
         cfsetospeed(&tty, B4000000);
+#endif
     } else {
         perror("Error: unsupported baudrate!");
         return 1;
