@@ -1,0 +1,3 @@
+OpenMixerControl is the Controller and GUI of OpenX32 and OpenWING
+
+We are currently in a repo transition phase, so the content will follow soon...
