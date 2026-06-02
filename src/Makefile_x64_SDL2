@@ -8,27 +8,34 @@
 #LD              = arm-linux-gnueabi-ld
 
 LVGL_DIR_NAME   ?= lvgl
-LVGL_DIR        ?= ./lv_port_linux
+LVGL_DIR        ?= ../lib/lv_port_linux
 LVGL_PATH       = demosAreDisabledByThisHack
-GLAZE_PATH		= ./lib
+LIB_DIR         = ../lib
+GLAZE_PATH      = ../lib/glaze/include
 
 WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-error=strict-prototypes -Wpointer-arith \
-                   -fno-strict-aliasing -Wno-error=cpp -Wuninitialized -Wmaybe-uninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wtype-limits \
+                   -fno-strict-aliasing -Wno-error=cpp -Wuninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wtype-limits \
                    -Wsizeof-pointer-memaccess -Wno-format-nonliteral -Wno-cast-qual -Wunreachable-code -Wno-switch-default -Wreturn-type -Wmultichar -Wformat-security \
-                   -Wno-ignored-qualifiers -Wno-error=pedantic -Wno-sign-compare -Wno-error=missing-prototypes -Wdouble-promotion -Wclobbered -Wdeprecated -Wempty-body \
-                   -Wshift-negative-value -Wstack-usage=2048 -Wno-unused-value
+                   -Wno-ignored-qualifiers -Wno-error=pedantic -Wno-sign-compare -Wno-error=missing-prototypes -Wdouble-promotion -Wdeprecated -Wempty-body \
+                   -Wshift-negative-value -Wno-unused-value
 
-DEPFLAGS        = -MMD -MP -D=BODYLESS_SDL2
+DEPFLAGS        = -MMD -MP -DBODYLESS_SDL2
 
 # normal build
-#CFLAGS          ?= -O3 -g0 -I$(LVGL_DIR)/ -I $(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
-#CXXFLAGS          ?= -std=c++23 -O3 -g0 -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+#CFLAGS          ?= -O3 -g0 -I$(LIB_DIR) -I$(LIB_DIR)/libartnet -I$(LVGL_DIR)/ -I $(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+#CXXFLAGS          ?= -std=c++23 -O3 -g0 -I$(LIB_DIR) -I$(LIB_DIR)/libartnet -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 # debug build
-CFLAGS          ?= -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS) 
-CXXFLAGS        ?= -std=c++23 -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+CFLAGS          ?= -g -I$(LIB_DIR) -I$(LIB_DIR)/libartnet -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS) 
+CXXFLAGS        ?= -std=c++23 -g -I$(LIB_DIR) -I$(LIB_DIR)/libartnet -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
-LDFLAGS         ?= -lSDL2 -lm -lrt -lpthread #-lartnet
+LDFLAGS         ?= -lSDL2 -lm -lpthread
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    LDFLAGS += -lrt
+    WARNINGS += -Wmaybe-uninitialized -Wclobbered -Wstack-usage=2048
+endif
 
 BIN             = x32ctrl
 BUILD_DIR       = ../bin
@@ -38,19 +45,24 @@ BUILD_BIN_DIR   = $(BUILD_DIR)
 prefix          ?= /usr
 bindir          ?= $(prefix)/bin
 
-# Collect source files recursively
-CSRCS           := $(shell find \
-                        -path './lv_port_linux/example' -prune -o \
-                        -path './lv_port_linux/lvgl/demos' -prune -o \
-                        -path './lv_port_linux/lvgl/examples' -prune -o \
-                        -path './lv_port_linux/lvgl/tests' -prune -o \
-			-type f -name '*.c' -not -path './lv_port_linux/src/main.c' -print)
-CXXSRCS         := $(shell find \
-                        -path './lv_port_linux/example' -prune -o \
-                        -path './lv_port_linux/lvgl/demos' -prune -o \
-                        -path './lv_port_linux/lvgl/examples' -prune -o \
-                        -path './lv_port_linux/lvgl/tests' -prune -o \
-			-type f -name '*.cpp' -not -path './lv_port_linux/src/main.c' -print)
+# Collect source files recursively (macOS and Linux compatible find)
+CSRCS           := $(shell find . -type f -name '*.c' -print) \
+                   $(shell find ../lib \
+                        -path '../lib/lv_port_linux/example' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/tests' -prune -o \
+                        -path '../lib/glaze' -prune -o \
+                      -type f -name '*.c' -not -path '../lib/lv_port_linux/src/main.c' -print)
+
+CXXSRCS         := $(shell find . -type f -name '*.cpp' -print) \
+                   $(shell find ../lib \
+                        -path '../lib/lv_port_linux/example' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/demos' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/examples' -prune -o \
+                        -path '../lib/lv_port_linux/lvgl/tests' -prune -o \
+                        -path '../lib/glaze' -prune -o \
+                      -type f -name '*.cpp' -not -path '../lib/lv_port_linux/src/main.c' -print)
 
 all: copy default
 
@@ -84,9 +96,16 @@ $(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
 	@echo "AS  $<"
 
 copy:
-	@if ! diff -q lv_conf_SDL2.h lv_port_linux/lv_conf.h >/dev/null 2>&1; then \
-		cp lv_conf_SDL2.h lv_port_linux/lv_conf.h; \
-		echo "Update lv_port_linux/lv_conf.h (changed content)"; \
+	@if ! diff -q ../files/lv_conf_SDL2.h $(LVGL_DIR)/lv_conf.h >/dev/null 2>&1; then \
+		cp ../files/lv_conf_SDL2.h $(LVGL_DIR)/lv_conf.h; \
+		echo "Update $(LVGL_DIR)/lv_conf.h (changed content)"; \
+	else \
+		echo "lv_conf.h is up to date."; \
+	fi
+
+	@if ! diff -q ../files/lv_conf_SDL2.h lv_conf.h >/dev/null 2>&1; then \
+		cp ../files/lv_conf_SDL2.h lv_conf.h; \
+		echo "Update lv_conf.h (changed content)"; \
 	else \
 		echo "lv_conf.h is up to date."; \
 	fi
