@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <stdio.h>
 #include <string.h>
-#ifndef __APPLE__
 #include <linux/input.h>
-#endif
 #include <fcntl.h>
 #include <termios.h>
 #include <sys/ioctl.h> // for FIONREAD

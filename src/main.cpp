@@ -61,11 +61,9 @@ static lv_indev_t *mouse_wheel;
 static lv_indev_t *keyboard;
 #endif
 
-#ifndef __APPLE__
 timer_t timerid_10ms;
 struct sigevent sev_10ms;
 struct itimerspec trigger_10ms;
-#endif
 uint8_t vtimercounter = 0;
 
 void timer100msCallbackLvgl(_lv_timer_t* lv_timer) { 
@@ -79,8 +77,6 @@ void timer50msCallbackLvgl(_lv_timer_t* lv_timer) {
 void timer10msCallbackLvgl(_lv_timer_t* lv_timer) {
 	ui_tick(); ctrl->Tick10ms();
 }
-
-#ifndef __APPLE__
 void timer10msCallbackLinux(int timer) {
 	
 	ctrl->Tick10ms();
@@ -126,10 +122,8 @@ void init10msTimer_NonGUI(void) {
 		perror("timer_settime");
 	}
 }
-#endif
 
 void guiInit(X32Config* config) {
-	using enum MP_ID;
 
 	lv_init();
 
@@ -403,11 +397,7 @@ int main(int argc, char* argv[]) {
 	if (config->IsModelX32Core()){
 		// only necessary if LVGL is not used
 		helper->Log("Starting Timers...\n");
-#ifndef __APPLE__
 		init10msTimer_NonGUI();
-#else
-		helper->Log("Timers not supported on macOS.\n");
-#endif
 
 		helper->Log("Press Ctrl+C to terminate program.\n");
 		while (1) {

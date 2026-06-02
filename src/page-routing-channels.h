@@ -6,9 +6,7 @@ using namespace std;
 
 class PageRoutingChannels: public Page
 {
-#ifndef __clang__
 	using enum MP_ID;
-#endif
 	
 	private:
 	

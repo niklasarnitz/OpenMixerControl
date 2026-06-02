@@ -2,9 +2,10 @@
 #include "page.h"
 
 using namespace std;
+using enum MP_ID;
+
 class PageMeters : public Page 
 {
-    using enum MP_ID;
     private:
         
         lv_obj_t* meterBlocks[9];

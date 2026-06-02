@@ -10,7 +10,3 @@
 	path = lib/libartnet
 	url = https://github.com/OpenLightingProject/libartnet.git
 	ignore = dirty
-[submodule "lib/liblo"]
-	path = lib/liblo
-	url = https://github.com/radarsat1/liblo.git
-	ignore = dirty

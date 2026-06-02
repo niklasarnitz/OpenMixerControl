@@ -2,9 +2,10 @@
 #include "page.h"
 
 using namespace std;
+using enum MP_ID;
+
 class PageRta : public Page 
 {
-    using enum MP_ID;
      private:
         lv_chart_series_t* chartSeriesRta;
         uint8_t updateRateReducer = 0;
