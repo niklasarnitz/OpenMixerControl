@@ -2794,7 +2794,7 @@ void X32Ctrl::ProcessSurface(X32_BOARD board, uint8_t classid, uint8_t index, ui
 
 					data->texts[textIndex].text = String(chan[i]);
 					data->texts[textIndex].size = 0x20;
-					data->texts[textIndex].x = x;
+					data->texts[textIndex].x = 45;
 					data->texts[textIndex].y = 22;
 					
 					textcount = textIndex + 1;
