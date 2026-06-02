@@ -48,6 +48,9 @@
 
 #include "ctrl.h"
 
+#ifdef BODYLESS_SDL2
+#include "simulator-gui.h"
+#endif
 
 X32Ctrl* ctrl;
 State* state;
@@ -173,6 +176,12 @@ void guiInit(X32Config* config) {
 	// InitPagesAndGUI() has to be called after ui_init()!
 	ctrl->InitPagesAndGUI();
 
+#ifdef BODYLESS_SDL2
+	if (state->bodyless) {
+		SimulatorGUI::Init(ctrl);
+	}
+#endif
+
 	// trigger first update of display header
 	config->Refresh(SELECTED_CHANNEL);
 
@@ -205,6 +214,7 @@ void guiInit(X32Config* config) {
 
 		while (1)
 		{
+			SimulatorGUI::Tick();
 			idle_time = lv_timer_handler();
         	usleep(idle_time * 1000);
     	}
