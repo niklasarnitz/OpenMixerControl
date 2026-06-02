@@ -27,8 +27,8 @@ CFLAGS          ?= -std=c11 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ 
 CXXFLAGS        ?= -std=c++23 -flto=auto $(COPTS) -g0 -D_GNU_SOURCE -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ -I$(ARTNET_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 # debug build
-#CFLAGS          ?= -std=c11 -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
-#CXXFLAGS         ?= -std=c++23 -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+#CFLAGS          ?= -std=c11 -g -D_GNU_SOURCE -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ -I$(ARTNET_PATH)/ $(WARNINGS) $(DEPFLAGS)
+#CXXFLAGS         ?= -std=c++23 -D_GNU_SOURCE -g -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ -I$(ARTNET_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 LDFLAGS         ?= -flto=auto -lm -lrt -lpthread -lartnet
 

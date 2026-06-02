@@ -30,10 +30,10 @@
             "type": "gdb",
             "request": "attach",
             "name": "Attach to gdbserver",
-            "executable": "../build/omc",
-            "target": "192.168.188.104:10001",
+            "executable": "${workspaceFolder}/build/omc",
+            "target": "192.168.188.104:10000",
             "remote": true,
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot}/build",
             "valuesFormatting": "parseText",
             "gdbpath": "/usr/bin/gdb-multiarch", 
         }
