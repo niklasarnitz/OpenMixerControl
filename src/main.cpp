@@ -159,21 +159,28 @@ void guiInit(X32Config* config) {
 	}
 	else
 	{
-		printf("FBDEV mode\n");
+		printf("FBDEV modes\n");
 
+		printf("driver_backends_register()\n");
 		driver_backends_register();
 		char dev[] = "FBDEV";
+
+		printf("driver_backends_init_backend(dev)\n");
 		driver_backends_init_backend(dev);
 	}
-
+	printf("lv_timer_create(timer10msCallbackLvgl, 10, NULL)\n");
 	lv_timer_create(timer10msCallbackLvgl, 10, NULL);
+	printf("lv_timer_create(timer50msCallbackLvgl, 50, NULL)\n");
 	lv_timer_create(timer50msCallbackLvgl, 50, NULL);
+	printf("lv_timer_create(timer100msCallbackLvgl, 100, NULL)\n");
 	lv_timer_create(timer100msCallbackLvgl, 100, NULL);
 
 	// initialize GUI created by EEZ
+	printf("ui_init()\n");
 	ui_init();
 
 	// InitPagesAndGUI() has to be called after ui_init()!
+	printf("ctrl->InitPagesAndGUI()\n");
 	ctrl->InitPagesAndGUI();
 
 #ifdef BODYLESS_SDL2
@@ -183,6 +190,7 @@ void guiInit(X32Config* config) {
 #endif
 
 	// trigger first update of display header
+	printf("config->Refresh(SELECTED_CHANNEL)\n");
 	config->Refresh(SELECTED_CHANNEL);
 
 	// trigger load of banks

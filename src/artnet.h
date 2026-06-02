@@ -11,7 +11,7 @@
 using namespace std;
 #if ENABLE_ARTNET
 
-#include "../libartnet/artnet/artnet.h"
+#include "../lib/libartnet/artnet/artnet.h"
 
 class Artnet : public X32Base
 {

@@ -115,24 +115,6 @@
   },
   "actions": [
     {
-      "objID": "4d08c573-310a-4efc-e823-e4b8419688d7",
-      "components": [],
-      "connectionLines": [],
-      "localVariables": [],
-      "componentGroups": [],
-      "userProperties": [],
-      "name": "ENCODER1_Clicked"
-    },
-    {
-      "objID": "15595bfc-c654-4ccc-8899-ae412d5def0a",
-      "components": [],
-      "connectionLines": [],
-      "localVariables": [],
-      "componentGroups": [],
-      "userProperties": [],
-      "name": "ENCODER1_Scroll"
-    },
-    {
       "objID": "26fab2e6-297a-4446-ace9-7f0fdeb2b5b8",
       "components": [],
       "connectionLines": [],
@@ -14114,7 +14096,7 @@
                 },
                 "FOCUSED": {
                   "bg_color": "#2196f3",
-                  "bg_opa": 1255,
+                  "bg_opa": 255,
                   "text_color": "#000000"
                 }
               }
