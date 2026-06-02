@@ -2652,18 +2652,18 @@ void X32Config::DefineSurfaceElements()
         GetSurfaceElement(VIEW_MIX_BUS_SENDS)           ->DefButton(X32_BOARD_MAIN, 0x42);
 
         // Assign
-        GetSurfaceElement(ASSIGN_1)                     ->DefButton(X32_BOARD_R, 0x14);
-        GetSurfaceElement(ASSIGN_2)                     ->DefButton(X32_BOARD_R, 0x15);
-        GetSurfaceElement(ASSIGN_3)                     ->DefButton(X32_BOARD_R, 0x16);
-        GetSurfaceElement(ASSIGN_4)                     ->DefButton(X32_BOARD_R, 0x17);
-        GetSurfaceElement(ASSIGN_5)                     ->DefButton(X32_BOARD_R, 0x18);
-        GetSurfaceElement(ASSIGN_6)                     ->DefButton(X32_BOARD_R, 0x19);
-        GetSurfaceElement(ASSIGN_7)                     ->DefButton(X32_BOARD_R, 0x1A);
-        GetSurfaceElement(ASSIGN_8)                     ->DefButton(X32_BOARD_R, 0x1B);
-        GetSurfaceElement(VIEW_ASSIGN)                  ->DefButton(X32_BOARD_R, 0x1C);
+        GetSurfaceElement(ASSIGN_1)                     ->DefButton(X32_BOARD_MAIN, 0x14);
+        GetSurfaceElement(ASSIGN_2)                     ->DefButton(X32_BOARD_MAIN, 0x15);
+        GetSurfaceElement(ASSIGN_3)                     ->DefButton(X32_BOARD_MAIN, 0x16);
+        GetSurfaceElement(ASSIGN_4)                     ->DefButton(X32_BOARD_MAIN, 0x17);
+        GetSurfaceElement(ASSIGN_5)                     ->DefButton(X32_BOARD_MAIN, 0x18);
+        GetSurfaceElement(ASSIGN_6)                     ->DefButton(X32_BOARD_MAIN, 0x19);
+        GetSurfaceElement(ASSIGN_7)                     ->DefButton(X32_BOARD_MAIN, 0x1A);
+        GetSurfaceElement(ASSIGN_8)                     ->DefButton(X32_BOARD_MAIN, 0x1B);
+        GetSurfaceElement(VIEW_ASSIGN)                  ->DefButton(X32_BOARD_MAIN, 0x1C);
 
         // Main Bus
-        GetSurfaceElement(MAIN_BUS_LEVEL_ENCODER)       ->DefEncoder(X32_BOARD_MAIN, 0x08, 0x32); // M/C Level
+        GetSurfaceElement(MAIN_BUS_LEVEL_ENCODER)       ->DefEncoder(X32_BOARD_MAIN, 0x07, 0x31); // M/C Level
         GetSurfaceElement(PAN_BAL_ENCODER)              ->DefEncoder(X32_BOARD_MAIN, 0x08, 0x32);
         GetSurfaceElement(MONO_BUS)                     ->DefButton(X32_BOARD_MAIN, 0x1D);
         GetSurfaceElement(MAIN_LR_BUS)                  ->DefButton(X32_BOARD_MAIN, 0x1E);
