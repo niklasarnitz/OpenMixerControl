@@ -7,7 +7,6 @@ class PageHome : public Page
     using enum MP_ID;
 
     private:
-
         lv_obj_t* vumeters[MAX_DISPLAY_ENCODER] =
         {
             objects.home_vumeter_1,
@@ -19,12 +18,9 @@ class PageHome : public Page
         };
 
         uint lastImageOffset[MAX_DISPLAY_ENCODER] = {0, 0, 0, 0, 0, 0};
-
         uint channelindex[6] = {0, 1, 2, 3, 4, 5};
 
-
     public:
-
         PageHome(PageBaseParameter* pagebasepar) : Page(pagebasepar)
         {
             nextPage = X32_PAGE::CONFIG;
@@ -37,7 +33,14 @@ class PageHome : public Page
 
         void OnShow() override 
         {
-            EncoderBind_NormalMode();
+            if (config->GetBool(DISPLAY_UTILITY))
+            {
+                EncoderBind_EditMode();
+            }
+            else
+            {
+                EncoderBind_NormalMode();
+            }
         }
 
         void EncoderBind_NormalMode()
@@ -61,7 +64,6 @@ class PageHome : public Page
         {
             String edittext = String("\n\nSelect ") + String(LV_SYMBOL_REFRESH);
 
-            // Show the Channelname
             config->SurfaceBindCustom(SurfaceElementId::DISPLAY_ENCODER_1, config->GetString(CHANNEL_NAME, channelindex[0]) + edittext);
             config->SurfaceBindCustom(SurfaceElementId::DISPLAY_ENCODER_2, config->GetString(CHANNEL_NAME, channelindex[1]) + edittext);
             config->SurfaceBindCustom(SurfaceElementId::DISPLAY_ENCODER_3, config->GetString(CHANNEL_NAME, channelindex[2]) + edittext);
@@ -69,7 +71,6 @@ class PageHome : public Page
             config->SurfaceBindCustom(SurfaceElementId::DISPLAY_ENCODER_5, config->GetString(CHANNEL_NAME, channelindex[4]) + edittext);
             config->SurfaceBindCustom(SurfaceElementId::DISPLAY_ENCODER_6, config->GetString(CHANNEL_NAME, channelindex[5]) + edittext);
 
-            // Button has no function in this mode
             config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1);
             config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_2);
             config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_3);
@@ -101,6 +102,7 @@ class PageHome : public Page
                     EncoderBind_NormalMode();
                 }
             }
+
         }
 
         void OnChangeCustomEncoder(SurfaceElementId surface_element_id, int amount)
@@ -134,7 +136,6 @@ class PageHome : public Page
                 uint imageOffset = helper->rescale(dbValue, -100.0f, 10.0f, 0.0f, 31.0f);
                 uint newImageOffset = imageOffset * -lv_obj_get_width(vumeters[i]);
              
-                // only set new offset if it has changed
                 if (newImageOffset != lastImageOffset[i])
                 {
                     lv_image_set_offset_x(vumeters[i], newImageOffset);

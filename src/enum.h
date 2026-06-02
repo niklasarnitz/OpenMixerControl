@@ -391,6 +391,7 @@ enum class X32_PAGE :int
         // sub-pages of setup
         SETUP_CARD,
         SETUP_SURFACE,
+        SETUP_MIXER_CONFIG,
         ABOUT,
         DEBUG,
         PROTOTYPEGUI,
@@ -498,6 +499,9 @@ enum class MP_ID {
     DISPLAY_BRIGHTNESS,
     SAMPLERATE,
     CHANNEL_LCD_MODE,
+    CHANNEL_LINKED,
+    BUS_LINKED,
+    MATRIX_LINKED,
 
     // Card
     CARD_NUMBER_OF_CHANNELS,
@@ -586,6 +590,8 @@ enum class MP_ID {
     CHANNEL_COLOR_INVERTED,
     CHANNEL_GAIN,
     CHANNEL_PANORAMA,
+    CHANNEL_STEREO_PAN,
+    CHANNEL_STEREO_WIDTH,
     CHANNEL_VOLUME,
     CHANNEL_VOLUME_SUB,
     CHANNEL_MUTE,

@@ -45,10 +45,17 @@ class X32Config
 
         // old
         X32_MODEL _model;
+        bool isSyncingStereoLink = false;
 
     public:
 
         X32Config(Helper* h);
+
+        bool GetPeerVChannel(uint index, uint& peerIndex);
+        bool IsRightChannelOfLinkedPair(uint index);
+        bool IsStereoLinkedMainRouted(uint index);
+        void ApplyStereoPanWidth(uint index);
+        void GetLinkChannels(MP_ID mp, uint index, uint& leftChan, uint& rightChan);
 
         bool LoadConfig(uint scene);
         void Save(uint scene);
@@ -157,4 +164,3 @@ class X32ConfigFile
     public:
         vector<X32ConfigFileEntry> entries;
 };
-

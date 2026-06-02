@@ -32,6 +32,7 @@
 #include "page-setup.h"
 #include "page-setup-card.h"
 #include "page-setup-surface.h"
+#include "page-setup-mixer-config.h"
 #include "page-debug.h"
 #include "page-about.h"
 #include "page-scenes.h"
@@ -111,6 +112,11 @@ class X32Ctrl : public X32Base
         void LoadAssignBank(X32AssignBankId id);
         void LoadDefaultSurfaceBinding();
         void LoadMainFaderSurfaceBinding();
+        
+        void UpdateFaderBanks();
+        void ReloadLoadedBanks();
+        vector<uint> GetActiveChannels(X32_VCHANNEL_BLOCK blockType);
+        void PopulateBankWithActive(X32FaderBank* bank, X32_VCHANNEL_BLOCK blockType, uint activeOffset);
 
         int surfacePacketCurrentIndex = 0;
         int surfacePacketCurrent = 0;

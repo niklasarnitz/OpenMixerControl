@@ -65,6 +65,7 @@ void X32Ctrl::Init()
 
 	helper->DEBUG_X32CTRL(DEBUGLEVEL_NORMAL, "mixer->Init()");
 	mixer->Init();
+	UpdateFaderBanks();
 
 	helper->DEBUG_X32CTRL(DEBUGLEVEL_NORMAL, "surface->Init()");
 	surface->Init();
@@ -186,6 +187,12 @@ void X32Ctrl::Tick10ms(void)
 		helper->DEBUG_X32CTRL(DEBUGLEVEL_NORMAL, "artnet->Sync()");
 		artnet->Sync();
 		#endif
+
+		if (config->HasParametersChanged({CHANNEL_LINKED, BUS_LINKED, MATRIX_LINKED}))
+		{
+			UpdateFaderBanks();
+			ReloadLoadedBanks();
+		}
 
 		syncGuiOrLcd();
 		//syncXRemote(false);
@@ -651,6 +658,7 @@ void X32Ctrl::InitPagesAndGUI()
 	pages[X32_PAGE::SETUP] = new PageSetup(pagebasepar);
 	pages[X32_PAGE::SETUP_CARD] = new PageSetupCard(pagebasepar);
 	pages[X32_PAGE::SETUP_SURFACE] = new PageSetupSurface(pagebasepar);
+	pages[X32_PAGE::SETUP_MIXER_CONFIG] = new PageSetupMixerConfig(pagebasepar);
 	pages[X32_PAGE::ABOUT] = new PageAbout(pagebasepar);
 	pages[X32_PAGE::DEBUG] = new PageDebug(pagebasepar);
 	pages[X32_PAGE::PROTOTYPEGUI] = new PagePrototypeGui(pagebasepar);
@@ -1503,7 +1511,24 @@ void X32Ctrl::SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t cha
 				textIndex++;
 
 				// Channel Internal Name
-				data->texts[textIndex].text = config->GetString(CHANNEL_NAME_INTERN, channelIndex);
+				String displayInternName = config->GetString(CHANNEL_NAME_INTERN, channelIndex);
+				uint peerIdx = 0;
+				if (config->GetPeerVChannel(channelIndex, peerIdx))
+				{
+					String prefix = "";
+					String digits = "";
+					for (uint k = 0; k < displayInternName.length(); k++)
+					{
+						if (displayInternName[k] >= '0' && displayInternName[k] <= '9') { digits += displayInternName[k]; }
+						else { prefix += displayInternName[k]; }
+					}
+					if (digits.length() > 0)
+					{
+						int val1 = atoi(digits.c_str());
+						displayInternName = prefix + String(val1) + "/" + String(val1 + 1);
+					}
+				}
+				data->texts[textIndex].text = displayInternName;
 				data->texts[textIndex].size = 0;
 				data->texts[textIndex].x = 35;
 				data->texts[textIndex].y = 51;
@@ -1527,7 +1552,10 @@ void X32Ctrl::SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t cha
 				data->texts[0].y = 0;
 
 				// Phanton / Invert / Gate / Dynamics / EQ active
+				uint peerIdx = 0;
+				String stereoText = config->GetPeerVChannel(channelIndex, peerIdx) ? "ST " : "";
 				data->texts[1].text =
+					stereoText +
 					String(config->GetBool(CHANNEL_PHANTOM, channelIndex) ? "48V " : "    ") +
 					String(config->GetBool(CHANNEL_PHASE_INVERT, channelIndex) ? "@ " : "  ") +
 					String(config->GetFloat(CHANNEL_GATE_TRESHOLD, channelIndex) > -80.0f ? "G " : "  ") +
@@ -2794,7 +2822,7 @@ void X32Ctrl::ProcessSurface(X32_BOARD board, uint8_t classid, uint8_t index, ui
 
 					data->texts[textIndex].text = String(chan[i]);
 					data->texts[textIndex].size = 0x20;
-					data->texts[textIndex].x = x;
+					data->texts[textIndex].x = 0;
 					data->texts[textIndex].y = 22;
 					
 					textcount = textIndex + 1;
@@ -3040,4 +3068,116 @@ void X32Ctrl::SimulatorButton(uint32_t key)
 			ProcessSurface(X32_BOARD_R, 'b', 0, 0x00);
 			break;
 	}
+}
+
+void X32Ctrl::UpdateFaderBanks()
+{
+    // Re-populate CH1_8, CH9_16, CH17_24, CH25_32
+    PopulateBankWithActive(banks[(uint)X32BankId::CH1_8], X32_VCHANNEL_BLOCK::NORMAL, 0);
+    PopulateBankWithActive(banks[(uint)X32BankId::CH9_16], X32_VCHANNEL_BLOCK::NORMAL, 8);
+    PopulateBankWithActive(banks[(uint)X32BankId::CH17_24], X32_VCHANNEL_BLOCK::NORMAL, 16);
+    PopulateBankWithActive(banks[(uint)X32BankId::CH25_32], X32_VCHANNEL_BLOCK::NORMAL, 24);
+
+    // Re-populate AUX_USB
+    PopulateBankWithActive(banks[(uint)X32BankId::AUX_USB], X32_VCHANNEL_BLOCK::AUX, 0);
+
+    // Re-populate FX_RET
+    PopulateBankWithActive(banks[(uint)X32BankId::FX_RET], X32_VCHANNEL_BLOCK::FXRET, 0);
+
+    // Re-populate BUS1_8, BUS9_16
+    PopulateBankWithActive(banks[(uint)X32BankId::BUS1_8], X32_VCHANNEL_BLOCK::BUS, 0);
+    PopulateBankWithActive(banks[(uint)X32BankId::BUS9_16], X32_VCHANNEL_BLOCK::BUS, 8);
+
+    // Re-populate MATRIX_MAIN
+    vector<uint> activeMatrix = GetActiveChannels(X32_VCHANNEL_BLOCK::MATRIX);
+    X32FaderBank* matrixBank = banks[(uint)X32BankId::MATRIX_MAIN];
+    for (uint i = 0; i < 8; i++)
+    {
+        if (i < activeMatrix.size())
+        {
+            SetChannelstripBinding(matrixBank, i, activeMatrix[i]);
+        }
+        else
+        {
+            uint extraIdx = i - activeMatrix.size();
+            if (extraIdx == 0)
+            {
+                SetChannelstripBinding(matrixBank, i, 70); // SPECIAL
+            }
+            else if (extraIdx == 1)
+            {
+                SetChannelstripBinding(matrixBank, i, 71); // MAINSUB
+            }
+            else
+            {
+                matrixBank->channelstrip[i]->select->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+                matrixBank->channelstrip[i]->vumeter->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+                matrixBank->channelstrip[i]->solo->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+                matrixBank->channelstrip[i]->lcd->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+                matrixBank->channelstrip[i]->mute->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+                matrixBank->channelstrip[i]->fader->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            }
+        }
+    }
+}
+
+void X32Ctrl::ReloadLoadedBanks()
+{
+    if (bankLoadedInputsection != nullptr)
+    {
+        LoadBank(X32BankTarget::InputSection, bankLoadedInputsection->GetID());
+    }
+    if (bankLoadedInputsection2 != nullptr)
+    {
+        LoadBank(X32BankTarget::InputSection2, bankLoadedInputsection2->GetID());
+    }
+    if (bankLoadedBussection != nullptr)
+    {
+        LoadBank(X32BankTarget::BusSection, bankLoadedBussection->GetID());
+    }
+}
+
+vector<uint> X32Ctrl::GetActiveChannels(X32_VCHANNEL_BLOCK blockType)
+{
+    vector<uint> list;
+    uint start = 0;
+    uint size = 0;
+    if (blockType == X32_VCHANNEL_BLOCK::NORMAL) { start = 0; size = 32; }
+    else if (blockType == X32_VCHANNEL_BLOCK::AUX) { start = 32; size = 8; }
+    else if (blockType == X32_VCHANNEL_BLOCK::FXRET) { start = 40; size = 8; }
+    else if (blockType == X32_VCHANNEL_BLOCK::BUS) { start = 48; size = 16; }
+    else if (blockType == X32_VCHANNEL_BLOCK::MATRIX) { start = 64; size = 6; }
+    else { return list; }
+
+    for (uint i = 0; i < size; i++)
+    {
+        uint chanIdx = start + i;
+        if (!config->IsRightChannelOfLinkedPair(chanIdx))
+        {
+            list.push_back(chanIdx);
+        }
+    }
+    return list;
+}
+
+void X32Ctrl::PopulateBankWithActive(X32FaderBank* bank, X32_VCHANNEL_BLOCK blockType, uint activeOffset)
+{
+    vector<uint> active = GetActiveChannels(blockType);
+    for (uint i = 0; i < 8; i++)
+    {
+        uint activeIdx = activeOffset + i;
+        if (activeIdx < active.size())
+        {
+            SetChannelstripBinding(bank, i, active[activeIdx]);
+        }
+        else
+        {
+            bank->channelstrip[i]->select->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            bank->channelstrip[i]->vumeter->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            bank->channelstrip[i]->solo->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            bank->channelstrip[i]->lcd->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            bank->channelstrip[i]->mute->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+            bank->channelstrip[i]->fader->FillBindingParameter(MixerparameterAction::NONE, MP_ID::NONE, 0);
+        }
+    }
 }

@@ -15,7 +15,7 @@ class PagePrototypeGui: public Page
             tabLayer0 = objects.maintab;
             tabIndex0 = 3;
             tabLayer1 = objects.setuptab;
-            tabIndex1 = 5;
+            tabIndex1 = 6;
             led = X32_BTN_SETUP;
         } 
 
