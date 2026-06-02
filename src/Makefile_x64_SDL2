@@ -21,7 +21,7 @@ WARNINGS        := -Wall -Wshadow -Wundef -Wextra -Wno-unused-function -Wno-erro
 DEPFLAGS        = -MMD -MP -D=BODYLESS_SDL2
 
 # normal build
-#CFLAGS          ?= -std=c11 -O3 -g0 -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I $(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
+#CFLAGS          ?= -O3 -g0 -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I $(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
 #CXXFLAGS        ?= -std=c++23 -O3 -g0 -I$(LIB_DIR)/ -I$(LVGL_DIR)/ -I$(GLAZE_PATH)/ $(WARNINGS) $(DEPFLAGS)
 
 # debug build
