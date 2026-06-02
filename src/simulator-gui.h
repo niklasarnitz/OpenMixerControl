@@ -37,6 +37,7 @@ private:
     static void FaderSliderEventCB(lv_event_t* e);
     static void ButtonEventCB(lv_event_t* e);
     static int SDLEventWatch(void* userdata, SDL_Event* sdl_event);
+    static void RaiseAllWindows(uint32_t focused_window_id = 0);
 
     // Protocol helper
     static void TurnEncoder(uintptr_t encoder_idx, int amount);

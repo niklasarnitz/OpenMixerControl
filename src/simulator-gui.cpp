@@ -135,6 +135,33 @@ void SimulatorGUI::PrepareDisplay(lv_display_t* disp) {
     simulator_indevs.push_back(mousewheel);
 }
 
+void SimulatorGUI::RaiseAllWindows(uint32_t focused_window_id) {
+    static bool raising = false;
+    if (raising) return;
+
+    raising = true;
+    std::vector<SDL_Window*> windows;
+    for (lv_display_t* disp = lv_display_get_next(nullptr); disp != nullptr; disp = lv_display_get_next(disp)) {
+        SDL_Window* win = lv_sdl_window_get_window(disp);
+        if (win != nullptr) {
+            windows.push_back(win);
+        }
+    }
+
+    for (SDL_Window* win : windows) {
+        if (SDL_GetWindowID(win) != focused_window_id) {
+            SDL_RaiseWindow(win);
+        }
+    }
+    for (SDL_Window* win : windows) {
+        if (SDL_GetWindowID(win) == focused_window_id) {
+            SDL_RaiseWindow(win);
+            break;
+        }
+    }
+    raising = false;
+}
+
 void SimulatorGUI::CreateNavWindow(int x, int y) {
     nav_disp = lv_sdl_window_create(110, 480);
     lv_sdl_window_set_title(nav_disp, "OpenX32 - omc - Navigation Buttons");
@@ -645,6 +672,8 @@ void SimulatorGUI::BuildFaderStrip(lv_obj_t* parent, int local_col_idx, uint8_t 
     lv_obj_set_style_bg_color(slider, lv_color_hex(0x555555), LV_PART_INDICATOR);
     lv_obj_set_style_bg_color(slider, lv_color_hex(0xEEEEEE), LV_PART_KNOB);
     lv_obj_set_style_radius(slider, 0, LV_PART_KNOB);
+    lv_obj_set_style_width(slider, 44, LV_PART_KNOB);
+    lv_obj_set_style_height(slider, 20, LV_PART_KNOB);
 
     uintptr_t fader_idx = virtual_faders.size();
     VirtualFaderStrip vstrip = {
@@ -756,6 +785,11 @@ void SimulatorGUI::PressSurfaceButton(SurfaceElementId elementId, bool pressed) 
 int SimulatorGUI::SDLEventWatch(void* userdata, SDL_Event* sdl_event) {
     (void)userdata;
     if (sdl_event == nullptr) {
+        return 0;
+    }
+
+    if (sdl_event->type == SDL_WINDOWEVENT && sdl_event->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+        RaiseAllWindows(sdl_event->window.windowID);
         return 0;
     }
 
