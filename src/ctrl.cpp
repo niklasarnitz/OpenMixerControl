@@ -1084,7 +1084,7 @@ void X32Ctrl::syncSurface(bool fullSync)
 					switch(config->GetUint(CHANNEL_LCD_MODE))
 					{
 						case 0:
-							if (config->HasParametersChanged({CHANNEL_PANORAMA, CHANNEL_NAME, CHANNEL_COLOR, CHANNEL_COLOR_INVERTED	}, binding_parameter->mp_index) ||
+							if (config->HasParametersChanged({CHANNEL_PANORAMA, CHANNEL_STEREO_PAN, CHANNEL_STEREO_WIDTH, CHANNEL_NAME, CHANNEL_COLOR, CHANNEL_COLOR_INVERTED	}, binding_parameter->mp_index) ||
 								config->HasParameterChanged(CHANNEL_LCD_MODE)
 							)
 							{
@@ -1092,7 +1092,7 @@ void X32Ctrl::syncSurface(bool fullSync)
 							}
 							break;
 						case 1:
-							if (config->HasParametersChanged({CHANNEL_PHASE_INVERT, CHANNEL_VOLUME, CHANNEL_PANORAMA, CHANNEL_GAIN,	CHANNEL_GATE_TRESHOLD,
+							if (config->HasParametersChanged({CHANNEL_PHASE_INVERT, CHANNEL_VOLUME, CHANNEL_PANORAMA, CHANNEL_STEREO_PAN, CHANNEL_STEREO_WIDTH, CHANNEL_GAIN,	CHANNEL_GATE_TRESHOLD,
 									CHANNEL_DYNAMICS_TRESHOLD, CHANNEL_PHANTOM, CHANNEL_NAME, CHANNEL_COLOR, CHANNEL_COLOR_INVERTED }, binding_parameter->mp_index) ||
 								config->HasParametersChanged({MP_CAT::CHANNEL_EQ}, binding_parameter->mp_index) || 
 								config->HasParameterChanged(CHANNEL_LCD_MODE)
@@ -1461,6 +1461,45 @@ void X32Ctrl::SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t cha
 
     LcdData* data = new LcdData();
 	uint textcount = 0;
+	auto getBalanceTextIndex = [](float balance) -> uint8_t
+	{
+		if (balance < -70){ return 0; }
+		else if (balance < -40){ return 1; }
+		else if (balance < -10){ return 2; }
+		else if (balance > 70){ return 6; }
+		else if (balance > 40){ return 5; }
+		else if (balance > 10){ return 4; }
+		return 3;
+	};
+	auto setBalanceText = [&](char* balanceText, uint8_t channelIndex)
+	{
+		uint peerIdx = 0;
+		bool isStereo = config->GetPeerVChannel(channelIndex, peerIdx);
+		float balance = config->GetFloat(isStereo ? CHANNEL_STEREO_PAN : CHANNEL_PANORAMA, channelIndex);
+		uint8_t balanceIndex = getBalanceTextIndex(balance);
+
+		if (isStereo)
+		{
+			float width = config->GetFloat(CHANNEL_STEREO_WIDTH, channelIndex);
+			if (width < 0.995f)
+			{
+				float widthPan = width * CHANNEL_PANORAMA_MAX;
+				uint8_t leftIndex = getBalanceTextIndex(helper->Saturate(balance - widthPan, CHANNEL_PANORAMA_MIN, CHANNEL_PANORAMA_MAX));
+				uint8_t rightIndex = getBalanceTextIndex(helper->Saturate(balance + widthPan, CHANNEL_PANORAMA_MIN, CHANNEL_PANORAMA_MAX));
+				if (leftIndex == rightIndex)
+				{
+					if (balanceIndex > 0) { leftIndex = balanceIndex - 1; }
+					if (balanceIndex < 6) { rightIndex = balanceIndex + 1; }
+				}
+				if (leftIndex == balanceIndex && leftIndex > 0) { leftIndex--; }
+				if (rightIndex == balanceIndex && rightIndex < 6) { rightIndex++; }
+				balanceText[leftIndex] = ':';
+				balanceText[rightIndex] = ':';
+			}
+		}
+
+		balanceText[balanceIndex] = '|';
+	};
 	
 	switch(config->GetUint(CHANNEL_LCD_MODE))
 	{
@@ -1477,24 +1516,8 @@ void X32Ctrl::SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t cha
 
 				// Volume / Panorama
 
-				float balance = config->GetFloat(CHANNEL_PANORAMA, channelIndex);
-				
 				char balanceText[8] = "-------";
-				if (balance < -70){
-					balanceText[0] = '|';
-				} else if (balance < -40){
-					balanceText[1] = '|';
-				} else if (balance < -10){
-					balanceText[2] = '|';
-				} else if (balance > 70){
-					balanceText[6] = '|';
-				} else if (balance > 40){
-					balanceText[5] = '|';
-				} else if (balance > 10){
-					balanceText[4] = '|';
-				} else {
-					balanceText[3] = '|';
-				}
+				setBalanceText(balanceText, channelIndex);
 				data->texts[textIndex].text = balanceText;    
 				data->texts[textIndex].size = 0;
 				data->texts[textIndex].x = 0;
@@ -1568,24 +1591,8 @@ void X32Ctrl::SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t cha
 
 				// Volume / Panorama
 
-				float balance = config->GetFloat(CHANNEL_PANORAMA, channelIndex);
-				
 				char balanceText[8] = "-------";
-				if (balance < -70){
-					balanceText[0] = '|';
-				} else if (balance < -40){
-					balanceText[1] = '|';
-				} else if (balance < -10){
-					balanceText[2] = '|';
-				} else if (balance > 70){
-					balanceText[6] = '|';
-				} else if (balance > 40){
-					balanceText[5] = '|';
-				} else if (balance > 10){
-					balanceText[4] = '|';
-				} else {
-					balanceText[3] = '|';
-				}
+				setBalanceText(balanceText, channelIndex);
 
 				float volume = config->GetFloat(CHANNEL_VOLUME, channelIndex);
 				if (volume > -100) {
