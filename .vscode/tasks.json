@@ -3,10 +3,10 @@
         {
             "label": "openx32-build",
             "type": "shell",
-            "command": "export PATH=/opt/cross/bin:$PATH; make -j14 && cp ../build/omc /var/www/html/x32/ &&  ssh root@192.168.188.104 \"cd /openx32 && rm omc && wget http://192.168.188.123/x32/omc && chmod +x omc\"",
-            "problemMatcher": {
-                "base": "$gcc",
-            },
+            "command": "./compile.sh && cp ./build/omc /var/www/html/x32/ &&  ssh root@192.168.188.104 \"cd /openx32 && rm omc && wget http://192.168.188.123/x32/omc && chmod +x omc\"",
+            "problemMatcher": [
+                "$gcc"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -28,15 +28,11 @@
         {
             "label": "openx32-x64-SDL2",
             "type": "shell",
-            "command": "cd src; export PATH=/opt/cross/bin:$PATH; make --file=Makefile_x64_SDL2 -j14",
+            "command": "export PATH=/opt/cross/bin:$PATH; make --file=Makefile_x64_SDL2 -j14",
             "options": {},
-            "problemMatcher": {
-                "base": "$gcc",
-                "fileLocation":[
-                    "relative",
-                    "${workspaceFolder}/src"
-                ]
-            },
+            "problemMatcher": [
+                "$gcc"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": false
