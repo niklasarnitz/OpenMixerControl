@@ -13,7 +13,7 @@ using enum MP_ID;
 
 #if ENABLE_ARTNET
 
-#include "../lib/libartnet/artnet/artnet.h"
+#include "artnet/artnet.h"
 
 class Artnet : public X32Base
 {

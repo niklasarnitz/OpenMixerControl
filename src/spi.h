@@ -5,15 +5,11 @@
 #include <fcntl.h>
 #include <list>
 
-#include "external.h"
 #include "defines.h"
 #include "types.h"
 #include "base.h"
 #include "state.h"
 #include "spi-event.h"
-
-#include "eez/src/ui/screens.h"
-
 
 // defines for FPGA-configuration via SPI
 #define PROG_B_GPIO_OFFSET      30

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mixerparameter.h"
+#include "../lib_ext/lvgl/lvgl.h"
 
 using namespace std;
 

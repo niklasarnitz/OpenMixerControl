@@ -130,7 +130,7 @@
             {
               "type": "row",
               "id": "#f78277aa-c701-481b-a0bb-9cf1b7e08a56",
-              "weight": 12.632557108802224,
+              "weight": 10.711106575578233,
               "children": [
                 {
                   "type": "tabset",
@@ -201,13 +201,13 @@
             {
               "type": "tabset",
               "id": "EDITORS",
-              "weight": 27.303746171646733,
+              "weight": 29.22519670487072,
               "enableDeleteWhenEmpty": false,
               "enableClose": false,
               "children": [
                 {
                   "type": "tab",
-                  "id": "#43d769e3-933b-4464-ae0a-9d056dbb90ff",
+                  "id": "#0c2a50b2-c244-4950-984a-b369a31680b1",
                   "name": "Settings",
                   "component": "editor",
                   "config": {

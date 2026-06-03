@@ -45,19 +45,19 @@
 #include "../lib/CLI11.hpp"
 
 // includes for lvgl
-#include "../lib/lv_port_linux/lvgl/lvgl.h"
-#include "../lib/lv_port_linux/src/lib/backends.h"
-#include "../lib/lv_port_linux/src/lib/driver_backends.h"
+//#include "../lib/lv_port_linux/lvgl/lvgl.h"
+//#include "../lib/lv_port_linux/src/lib/backends.h"
+//#include "../lib/lv_port_linux/src/lib/driver_backends.h"
 
 // including the GUI built by EEZ-Studio
-#include "eez/src/ui/actions.h"
-#include "eez/src/ui/fonts.h"
-#include "eez/src/ui/images.h"
-#include "eez/src/ui/screens.h"
-#include "eez/src/ui/structs.h"
-#include "eez/src/ui/styles.h"
-#include "eez/src/ui/ui.h"
-#include "eez/src/ui/vars.h"
+#include "eez/actions.h"
+#include "eez/fonts.h"
+#include "eez/images.h"
+#include "eez/screens.h"
+#include "eez/structs.h"
+#include "eez/styles.h"
+#include "eez/ui.h"
+#include "eez/vars.h"
 
 #include "../lib/tinyosc.h"
 

@@ -3,16 +3,9 @@
         {
             "label": "openx32-build",
             "type": "shell",
-            "command": "cd src; export PATH=/opt/cross/bin:$PATH; make -j14 && cp ../build/omc /var/www/html/x32/ &&  ssh root@192.168.188.104 \"cd /openx32 && rm omc && wget http://192.168.188.123/x32/omc && chmod +x omc\"",
-            "options": {
-                "cwd": "src"
-            },
+            "command": "export PATH=/opt/cross/bin:$PATH; make -j14 && cp ../build/omc /var/www/html/x32/ &&  ssh root@192.168.188.104 \"cd /openx32 && rm omc && wget http://192.168.188.123/x32/omc && chmod +x omc\"",
             "problemMatcher": {
                 "base": "$gcc",
-                "fileLocation":[
-                    "relative",
-                    "${workspaceFolder}/src"
-                ]
             },
             "group": {
                 "kind": "build",

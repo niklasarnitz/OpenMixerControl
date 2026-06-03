@@ -1,7 +1,7 @@
 #ifndef EEZ_LVGL_UI_SCREENS_H
 #define EEZ_LVGL_UI_SCREENS_H
 
-#include <lvgl/lvgl.h>
+#include <../../../lib_ext/lvgl/lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {

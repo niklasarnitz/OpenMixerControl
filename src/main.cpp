@@ -53,9 +53,9 @@ X32Ctrl* ctrl;
 State* state;
 CLI::App* app;
 
-#ifdef BODYLESS_SDL2
-// for SDL2 on PC
+// LVGL
 static lv_display_t *display;
+#ifdef BODYLESS_SDL2
 static lv_indev_t *mouse;
 static lv_indev_t *mouse_wheel;
 static lv_indev_t *keyboard;
@@ -123,6 +123,13 @@ void init10msTimer_NonGUI(void) {
 	}
 }
 
+const char * getenv_default(const char * name, const char * default_val)
+{
+    const char * value = getenv(name);
+    return value ? value : default_val;
+}
+
+
 void guiInit(X32Config* config) {
 
 	lv_init();
@@ -150,14 +157,15 @@ void guiInit(X32Config* config) {
 	}
 	else
 	{
-		printf("FBDEV modes\n");
+		const char * device = getenv_default("LV_LINUX_FBDEV_DEVICE", "/dev/fb0");
+		display = lv_linux_fbdev_create();
 
-		printf("driver_backends_register()\n");
-		driver_backends_register();
-		char dev[] = "FBDEV";
+		if(display == NULL) {
+			printf("could not create display!");
+			return;
+		}
 
-		printf("driver_backends_init_backend(dev)\n");
-		driver_backends_init_backend(dev);
+		lv_linux_fbdev_set_file(display, device);		
 	}
 	printf("lv_timer_create(timer10msCallbackLvgl, 10, NULL)\n");
 	lv_timer_create(timer10msCallbackLvgl, 10, NULL);
@@ -199,23 +207,12 @@ void guiInit(X32Config* config) {
 	// sync the Surface
 	ctrl->syncSurface(true);
 
-
-	if (state->bodyless)
+	// LVGL loop
+	uint32_t idle_time;
+	while (1)
 	{
-		#ifdef BODYLESS_SDL2
-		uint32_t idle_time;
-
-		while (1)
-		{
-			idle_time = lv_timer_handler();
-        	usleep(idle_time * 1000);
-    	}
-		#endif
-	}
-	else 
-	{
-		//start endless loop	
-		driver_backends_run_loop();
+		idle_time = lv_timer_handler();
+		usleep(idle_time * 1000);
 	}
 }
 

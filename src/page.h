@@ -2,6 +2,8 @@
 
 #include <map>
 
+#include "external.h"
+
 #include "defines.h"
 #include "enum.h"
 #include "base.h"
@@ -9,10 +11,9 @@
 #include "mixer.h"
 #include "pagebindings.h"
 
-#include "../lib/lv_port_linux/lvgl/lvgl.h"
-#include "eez/src/ui/screens.h"
-#include "eez/src/ui/images.h"
-#include "eez/src/ui/styles.h"
+#include "eez/screens.h"
+#include "eez/images.h"
+#include "eez/styles.h"
 
 using namespace std;
 using enum MP_ID;
