@@ -3,15 +3,9 @@ set -euo pipefail
 
 export PATH=/opt/cross/bin:$PATH
 
-# X32/M32
-CPU=arm926ej-s
-ARCH=arm
-CROSS_COMPILE=arm-linux-gnueabi-
-
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BUILD_DIR="${ROOT_DIR}/build"
-SRC_DIR="${ROOT_DIR}/src"
 LIB_EXT_DIR="${ROOT_DIR}/lib_ext"
 
 LVGL_DIR="${LIB_EXT_DIR}/lvgl"
