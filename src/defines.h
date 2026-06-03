@@ -15,10 +15,12 @@
 
 //#################################################################################
 
-#define TARGET_PC_SDL2
-
 // bodyless mode does not compile with artnet, so disable it
 #ifdef TARGET_PC_SDL2
+    #define ENABLE_ARTNET 0
+#endif
+
+#ifdef TARGET_WING
     #define ENABLE_ARTNET 0
 #endif
 
