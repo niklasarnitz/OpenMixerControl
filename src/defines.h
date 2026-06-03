@@ -25,9 +25,9 @@
 
 typedef unsigned int uint;
 
-#define X32_CTRL_VERSION "v0.2.5"
+#define OMC_VERSION "v0.3.0"
 
-#define X32_CTRL_URL "https://github.com/OpenMixerProject/OpenX32"
+#define OMC_URL "https://github.com/OpenMixerProject/OpenMixerControl"
 
 #define TIMER_1MS 1000000 // 1ms = 1000000ns
 #define TIMER_100MS 100 * TIMER_1MS 

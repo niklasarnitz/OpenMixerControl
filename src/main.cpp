@@ -347,7 +347,7 @@ int main(int argc, char* argv[]) {
 		printf("       | |                               \n");
 		printf("       |_|                               \n");
 		printf("\n");
-		printf("%s build on %s %s\n\n%s\n", X32_CTRL_VERSION, __DATE__, __TIME__, X32_CTRL_URL);
+		printf("%s build on %s %s\n\n%s\n", OMC_VERSION, __DATE__, __TIME__, OMC_URL);
 		return 0;
 	}
 
