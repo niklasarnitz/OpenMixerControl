@@ -19,7 +19,7 @@ int main()
     Path complex{"/complex"};
 
     oms.route(fader, [&](Peer& peer, const Message& msg) {
-        auto value = msg.arg<float>(0);
+        auto value = msg.arg(fader);
         if (!value) return;
 
         std::cout << "fader 1 = " << *value << "\n";

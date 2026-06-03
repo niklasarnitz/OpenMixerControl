@@ -15,8 +15,8 @@ int main()
     auto fader = OMC.faders.getValue(faderNumber(1));
     Path complexPath{"/complex"};
 
-    omc.route(fader, [](Peer&, const Message& msg) {
-        if (auto value = msg.arg<float>(0)) {
+    omc.route(fader, [fader](Peer&, const Message& msg) {
+        if (auto value = msg.arg(fader)) {
             std::cout << "rx fader 1 = " << *value << "\n";
         }
     });

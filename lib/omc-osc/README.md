@@ -12,8 +12,8 @@ Endpoint oms{"127.0.0.1", 9000};
 
 auto fader = OMC.faders.getValue(faderNumber(1));
 
-omc.route(fader, [](Peer&, const Message& msg) {
-    auto value = msg.arg<float>(0);
+omc.route(fader, [fader](Peer&, const Message& msg) {
+    auto value = msg.arg(fader);
 });
 
 omc.send(oms, fader, {0.75f});

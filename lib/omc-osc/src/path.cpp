@@ -7,9 +7,9 @@ FaderNumber faderNumber(uint16_t number)
     return FaderNumber{number};
 }
 
-Path FaderPaths::getValue(FaderNumber fader) const
+TypedPath<float> FaderPaths::getValue(FaderNumber fader) const
 {
-    return Path{"/faders/" + std::to_string(fader.value) + "/value"};
+    return TypedPath<float>{"/faders/" + std::to_string(fader.value) + "/value"};
 }
 
 const Paths OMC{};

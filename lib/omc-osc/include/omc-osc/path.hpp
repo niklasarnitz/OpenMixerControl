@@ -2,11 +2,23 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 namespace omc::osc {
 
 struct Path {
     std::string value;
+
+    Path() = default;
+    explicit Path(std::string value) : value(std::move(value)) {}
+};
+
+template <class TReturn>
+struct TypedPath : Path {
+    using Return = TReturn;
+
+    TypedPath() = default;
+    explicit TypedPath(std::string value) : Path(std::move(value)) {}
 };
 
 struct FaderNumber {
@@ -16,7 +28,7 @@ struct FaderNumber {
 FaderNumber faderNumber(uint16_t number);
 
 struct FaderPaths {
-    Path getValue(FaderNumber fader) const;
+    TypedPath<float> getValue(FaderNumber fader) const;
 };
 
 struct Paths {
