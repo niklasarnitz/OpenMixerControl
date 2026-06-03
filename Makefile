@@ -72,17 +72,17 @@ OBJS            = $(AOBJS) $(COBJS) $(CXXOBJS)
 TARGET          = $(addprefix $(BUILD_OBJ_DIR)/, $(patsubst ./%, %, $(OBJS)))
 DEPS            = $(TARGET:.o=.d)
 
-$(BUILD_OBJ_DIR)/%.o: %.c lv_conf.h
+$(BUILD_OBJ_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	@$(CC)  $(CFLAGS) -c $< -o $@
 	@echo "CC  $<"
 
-$(BUILD_OBJ_DIR)/%.o: %.cpp lv_conf.h
+$(BUILD_OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	@$(CXX)  $(CXXFLAGS) -c $< -o $@
 	@echo "CXX $<"
 
-$(BUILD_OBJ_DIR)/%.o: %.S lv_conf.h
+$(BUILD_OBJ_DIR)/%.o: %.S
 	@mkdir -p $(dir $@)
 	@$(CC)  $(CFLAGS) -c $< -o $@
 	@echo "AS  $<"
