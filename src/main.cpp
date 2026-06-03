@@ -55,7 +55,7 @@ CLI::App* app;
 
 // LVGL
 static lv_display_t *display;
-#ifdef BODYLESS_SDL2
+#ifdef TARGET_PC_SDL2
 static lv_indev_t *mouse;
 static lv_indev_t *mouse_wheel;
 static lv_indev_t *keyboard;
@@ -138,7 +138,7 @@ void guiInit(X32Config* config) {
 	{
 		printf("bodyless mode (Development Simulator) startet\n");
 
-		#ifdef BODYLESS_SDL2
+		#ifdef TARGET_PC_SDL2
 		display = lv_sdl_window_create(DISPLAY_RESOLUTION_X, DISPLAY_RESOLUTION_Y);		
 	 	lv_sdl_window_set_title(display, "OpenX32 - omc - Development Simulator");
 		keyboard = lv_sdl_keyboard_create();
@@ -219,7 +219,7 @@ void guiInit(X32Config* config) {
 
 void action_action_key(lv_event_t * e)
 {
-	#ifdef BODYLESS_SDL2
+	#ifdef TARGET_PC_SDL2
 	ctrl->SimulatorButton(lv_indev_get_key(keyboard));
 	#endif
 }
