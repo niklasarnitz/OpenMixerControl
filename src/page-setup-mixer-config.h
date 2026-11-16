@@ -115,12 +115,10 @@ class PageSetupMixerConfig: public Page
             else if (mp_id == BUS_LINKED) { selected_type = 1; }
             else if (mp_id == MATRIX_LINKED) { selected_type = 2; }
             selected_idx[selected_type] = pair_index;
-            
-            // Toggle link parameter
-            config->Toggle(mp_id, pair_index);
-            
-            // Force redraw of all buttons to stay in sync
-            OnChange(true);
+
+            // Linking overwrites the right side, so touch goes through the same
+            // confirmation as the encoder buttons
+            ShowToggleConfirm(selected_type);
         }
 
         static void link_btn_event_cb(lv_event_t * e)
@@ -180,6 +178,7 @@ class PageSetupMixerConfig: public Page
             String message = String("Change ") + pair_label + String(" to ") + next_mode + String(" mode?");
 
             CloseConfirmBox();
+            OnChange(true); // move the focus outline to the pair in question
             confirm_prev_page = prevPage;
             confirm_next_page = nextPage;
             prevPage = X32_PAGE::NONE;
@@ -346,6 +345,11 @@ class PageSetupMixerConfig: public Page
                     ConfirmPendingModeChange();
                     return;
                 }
+            }
+
+            if (!force_update && !config->HasParametersChanged({CHANNEL_LINKED, BUS_LINKED, MATRIX_LINKED}))
+            {
+                return;
             }
 
             // Redraw/re-style all buttons according to their state and current focus
