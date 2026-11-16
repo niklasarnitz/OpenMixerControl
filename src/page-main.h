@@ -18,7 +18,7 @@ class PageMain : public Page
 
         void BindMainEncoders()
         {
-            bool stereo = config->IsStereoLinkedMainRouted(config->GetUint(SELECTED_CHANNEL));
+            bool stereo = config->HasStereoPan(config->GetUint(SELECTED_CHANNEL));
 
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_1, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_VOLUME);
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_SEND_LR);
@@ -60,9 +60,8 @@ class PageMain : public Page
 
         void OnChange(bool force_update) override
         {
-            bool stereo = config->IsStereoLinkedMainRouted(config->GetUint(SELECTED_CHANNEL));
-            if (force_update || stereo != stereoControlsBound ||
-                config->HasParametersChanged({CHANNEL_LINKED, BUS_LINKED, CHANNEL_SEND_LR}))
+            bool stereo = config->HasStereoPan(config->GetUint(SELECTED_CHANNEL));
+            if (force_update || stereo != stereoControlsBound)
             {
                 BindMainEncoders();
             }

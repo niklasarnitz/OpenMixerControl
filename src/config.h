@@ -57,6 +57,8 @@ namespace OMC
             bool isSyncingStereoLink = false;
 
             bool GetLinkChannels(MP_ID mp, uint index, uint& leftChannel, uint& rightChannel);
+            bool IsMirroredParameter(MP_ID mp);
+            void CopyParameterToPeer(MP_ID mp, uint index, uint peerIndex);
             void SyncLinkedParameter(MP_ID mp, uint index);
 
         public:
@@ -114,7 +116,7 @@ namespace OMC
 
             bool GetPeerVChannel(uint index, uint& peerIndex);
             bool IsRightChannelOfLinkedPair(uint index);
-            bool IsStereoLinkedMainRouted(uint index);
+            bool HasStereoPan(uint index);
             void ApplyStereoPanWidth(uint index);
 
             MP_ID ParameterCalcId(SurfaceBindingParameter* binding_parameter);
