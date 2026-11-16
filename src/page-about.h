@@ -2,16 +2,20 @@
 #include "page.h"
 using namespace std;
 
+namespace OMC
+{
+
 class PageAbout: public Page {
     public:
         PageAbout(PageBaseParameter* pagebasepar) : Page(pagebasepar) {
-            prevPage = X32_PAGE::SETUP_MIXER_CONFIG;
+            prevPage = X32_PAGE::SETUP_SURFACE;
             nextPage = X32_PAGE::DEBUG;
             tabLayer0 = objects.maintab;
             tabIndex0 = 3;
             tabLayer1 = objects.setuptab;
-            tabIndex1 = 4;
-            led = X32_BTN_SETUP;
+            tabIndex1 = 3;
             hideEncoders = true;
         }
 };
+
+}

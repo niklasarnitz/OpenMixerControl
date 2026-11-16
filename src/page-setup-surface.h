@@ -2,6 +2,9 @@
 #include "page.h"
 using namespace std;
 
+namespace OMC
+{
+
 class PageSetupSurface: public Page
 {
     private:
@@ -26,7 +29,7 @@ class PageSetupSurface: public Page
         vector<MixerparameterAction> actions;
         vector<MP_ID> mixerparameters;
 
-        X32AssignBank* bank;
+        OMCAssignBank* bank;
         SurfaceBindingParameter* binding_parameter;
 
         void FillGroups()
@@ -299,12 +302,11 @@ class PageSetupSurface: public Page
         PageSetupSurface(PageBaseParameter* pagebasepar) : Page(pagebasepar)
         {
             prevPage = X32_PAGE::SETUP_CARD ;
-            nextPage = X32_PAGE::SETUP_MIXER_CONFIG;
+            nextPage = X32_PAGE::ABOUT;
             tabLayer0 = objects.maintab;
             tabIndex0 = 3;
             tabLayer1 = objects.setuptab;
             tabIndex1 = 2;
-            led = X32_BTN_SETUP;
         }
 
         void OnInit() override
@@ -449,3 +451,5 @@ class PageSetupSurface: public Page
             }
         }
 };
+
+}

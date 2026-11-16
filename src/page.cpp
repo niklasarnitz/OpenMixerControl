@@ -24,11 +24,12 @@
 
 #include "page.h"
 
+namespace OMC
+{
+
 Page::Page(PageBaseParameter* pagebasepar) : X32Base(pagebasepar)
 {
     helper->DEBUG_GUI(DEBUGLEVEL_NORMAL, "Page::Page()");
-
-    mixer = pagebasepar->mixer;
     surface = pagebasepar->surface;
 }
 
@@ -239,15 +240,6 @@ X32_PAGE Page::GetPrevPage() {
     return prevPage;
 }
 
-X32_BTN Page::GetLed() {
-    if (!(config->IsModelX32Rack() && noLedOnRack))
-    {
-        return led;
-    }
-
-    return X32_BTN_NONE;
-}
-
 void Page::SyncEncoderWidgets(bool force)
 {
     if (hideEncoders && !config->GetBool(DISPLAY_MUTE_GROUP)) {
@@ -315,22 +307,7 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
                     else 
                     {
                         lv_obj_set_flag(lvgl_encoder_widget->Slider, LV_OBJ_FLAG_HIDDEN, false);
-                        if (id == MP_ID::CHANNEL_STEREO_WIDTH)
-                        {
-                            uint width_percent = parameter->GetPercent(index);
-                            int width_start = (100 - (int)width_percent) / 2;
-                            int width_end = width_start + (int)width_percent;
-                            lv_slider_set_mode(lvgl_encoder_widget->Slider, LV_SLIDER_MODE_RANGE);
-                            lv_slider_set_range(lvgl_encoder_widget->Slider, 0, 100);
-                            lv_slider_set_start_value(lvgl_encoder_widget->Slider, width_start, LV_ANIM_OFF);
-                            lv_slider_set_value(lvgl_encoder_widget->Slider, width_end, LV_ANIM_OFF);
-                        }
-                        else
-                        {
-                            lv_slider_set_mode(lvgl_encoder_widget->Slider, LV_SLIDER_MODE_NORMAL);
-                            lv_slider_set_range(lvgl_encoder_widget->Slider, -2, 101);
-                            lv_slider_set_value(lvgl_encoder_widget->Slider, parameter->GetPercent(index), LV_ANIM_OFF);
-                        }
+                        lv_slider_set_value(lvgl_encoder_widget->Slider, parameter->GetPercent(index), LV_ANIM_OFF);          
                     }
                 }
             }
@@ -344,13 +321,6 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
     }
     else
     {
-        if (surface_binding_button->mp_action == MixerparameterAction::CUSTOM)
-        {
-            lv_label_set_text(lvgl_encoder_widget->ButtonLabel, surface_binding_button->custom_label.c_str());
-            remove_style_label_bg_yellow(lvgl_encoder_widget->ButtonLabel);
-            return;
-        }
-
         MP_ID id = config->ParameterCalcId(surface_binding_button);
         uint index = config->ParameterCalcIndex(surface_binding_button);
             
@@ -402,4 +372,6 @@ void Page::ClearEncoderButton(LVGLEncoderWidget *binding)
 {
     lv_label_set_text(binding->ButtonLabel, "");
     remove_style_label_bg_yellow(binding->ButtonLabel);
+}
+
 }

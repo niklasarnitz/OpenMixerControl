@@ -22,8 +22,12 @@
   GNU General Public License for more details.
 */
 
+#include "../lib_ext/doctest/doctest/doctest.h"
 #include "uart.h"
+#include "base-parameter.h"
 
+namespace OMC
+{
 
 Uart::Uart(X32BaseParameter* basepar): X32Base(basepar) {}
 
@@ -33,19 +37,19 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     
     if (state->bodyless && !state->bodyless_with_surface_and_adda)
     {
-        return 0;
+        return 1;
     }
 
     struct termios tty;
 
     fd = open(ttydev, O_RDWR | O_NOCTTY | O_NDELAY);
     if (fd < 0) {
-        perror("Error opening serial-port!");
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error opening serial-port!");
         return 1;
     }
 
     if (tcgetattr(fd, &tty) != 0) {
-        perror("Error reading serial-port-attributes!");
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error reading serial-port-attributes!");
         close(fd);
         return 1;
     }
@@ -88,7 +92,6 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     } else if (baudrate == 115200) {
         cfsetispeed(&tty, B115200);
         cfsetospeed(&tty, B115200);
-#ifndef __APPLE__
     } else if (baudrate == 500000) {
         cfsetispeed(&tty, B500000);
         cfsetospeed(&tty, B500000);
@@ -116,14 +119,13 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     } else if (baudrate == 4000000) {
         cfsetispeed(&tty, B4000000);
         cfsetospeed(&tty, B4000000);
-#endif
     } else {
-        perror("Error: unsupported baudrate!");
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error: unsupported baudrate!");
         return 1;
     }
 
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
-        perror("Error setting serial-port-attributes!");
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error setting serial-port-attributes!");
         close(fd);
         return 1;
     }
@@ -131,24 +133,10 @@ int Uart::Open(const char* ttydev, uint32_t baudrate, bool raw) {
     return 0;
 }
 
-int Uart::Tx(MessageBase* message) {
-#ifdef BODYLESS_SDL2
-    if (state->bodyless && !state->bodyless_with_surface_and_adda)
-    {
-        emulated_tx_buffer.insert(emulated_tx_buffer.end(), message->buffer, message->buffer + message->current_length);
-        if (helper->DEBUG_UART(DEBUGLEVEL_TRACE)) {
-            printf("DEBUG_UART (EMULATED): TransmitRaw: ");
-            for (uint8_t i=0; i < message->current_length; i++){
-                printf("%.2X ", (uint8_t)message->buffer[i]);
-            }
-            printf("\n");
-        }
-        return message->current_length;
-    }
-#endif
-
-    if (fd < 0) {
-        fprintf(stderr, "Error: Problem on opening serial port\n");
+int Uart::Tx(MessageBase* message)
+{
+    if (fd < 1) {
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "serial port not opened");
         return -1;
     }
 
@@ -172,39 +160,27 @@ int Uart::Tx(MessageBase* message) {
         return 0;
     }
 
-    int bytes_written = write(fd, message->buffer, message->current_length);
+    if (fd != 0)
+    {
+        int bytes_written = write(fd, message->buffer, message->current_length);
+        return bytes_written;
+    }
 
-    return bytes_written;
+    return 0;
 }
 
 int Uart::Rx(char* buf, uint16_t bufLen) {
-#ifdef BODYLESS_SDL2
-    if (state->bodyless && !state->bodyless_with_surface_and_adda)
-    {
-        if (emulated_rx_buffer.empty()) {
-            return 0;
-        }
-        int to_read = std::min((size_t)bufLen, emulated_rx_buffer.size());
-        std::copy(emulated_rx_buffer.begin(), emulated_rx_buffer.begin() + to_read, buf);
-        emulated_rx_buffer.erase(emulated_rx_buffer.begin(), emulated_rx_buffer.begin() + to_read);
-
-        if (helper->DEBUG_UART(DEBUGLEVEL_TRACE)){
-            printf("DEBUG_UART (EMULATED): Receive: ");
-            for (uint8_t i=0; i < to_read; i++){
-                printf("%.2X ", (uint8_t)buf[i]);
-            }
-            printf("\n");
-        }
-        return to_read;
-    }
-#endif
-
     int bytesRead;
     int bytesAvailable;
     int bytesToRead;
 
+    if (fd < 1) {
+        helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "serial port not opened");
+        return -1;
+    }
+
 	if (ioctl(fd, FIONREAD, &bytesAvailable) == -1) {
-		perror("Error on ioctl FIONREAD");
+		helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error on ioctl FIONREAD");
 		close(fd);
 		return 1;
 	}
@@ -221,7 +197,7 @@ int Uart::Rx(char* buf, uint16_t bufLen) {
         bytesRead = read(fd, buf, bytesToRead);
 
 		if (bytesRead < 0) {
-			perror("Error reading from serial-port");
+			helper->DEBUG_UART(DEBUGLEVEL_NORMAL, "Error reading from serial-port");
 			close(fd);
 			return -1;
 		}
@@ -246,53 +222,65 @@ int Uart::Rx(char* buf, uint16_t bufLen) {
 	return 0;
 }
 
-/*
-void Uart::MirrorBack() {
-    int bytesRead;
-    int bytesAvailable;
-    char buf[100];
-    int bytesToRead;
-
-	if (ioctl(fd, FIONREAD, &bytesAvailable) == -1) {
-		perror("Error on ioctl FIONREAD");
-		close(fd);
-		return;
-	}
-    bytesToRead = bytesAvailable;
-    if (bytesToRead > 100) {
-        bytesToRead = 100;
-    }
-
-	if (bytesToRead > 0) {
-        bytesRead = read(fd, &buf[0], bytesToRead);
-
-		if (bytesRead > 0) {
-            // send via same UART
-            write(fd, &buf[0], bytesRead);
-		}
-	}
-}
-*/
-
 void Uart::FlushRxBuffer() {
     char buf;
 	while (Rx(&buf, 1) > 0);
 }
 
-#ifdef BODYLESS_SDL2
-void Uart::WriteEmulatedRx(const char* data, size_t len) {
-    emulated_rx_buffer.insert(emulated_rx_buffer.end(), data, data + len);
+// ######## ########  ######  ########  ######  
+//    ##    ##       ##    ##    ##    ##    ## 
+//    ##    ##       ##          ##    ##       
+//    ##    ######    ######     ##     ######  
+//    ##    ##             ##    ##          ## 
+//    ##    ##       ##    ##    ##    ##    ## 
+//    ##    ########  ######     ##     ######  
+
+
+TEST_CASE("UART")
+{
+    State* state = new State();
+    Helper* helper = new Helper();
+    X32BaseParameter* basepar = new X32BaseParameter(nullptr, nullptr, state, helper);
+    Uart* u = new Uart(basepar);
+    char* buf = 0;
+    uint16_t bufLen = 0;
+
+    SUBCASE("open not exisiting device")
+    {
+        int result = u->Open("/this/dev/does/not/exist", 9600, true);
+        CHECK(result == 1);
+
+        SUBCASE("should not receive if not connected")
+        {
+            result = u->Rx(buf, bufLen);
+            CHECK(result == -1);
+        }
+
+        SUBCASE("should not send if not connected")
+        {
+            result = u->Tx(nullptr);
+            CHECK(result == -1);
+        }
+    }
+
+    SUBCASE("bodyless mode without surface and adda")
+    {
+        state->bodyless = GENERATE(true, false);
+        state->bodyless_with_surface_and_adda = GENERATE(true, false);
+
+        SUBCASE("receive")
+        {
+            int result = u->Rx(buf, bufLen);
+            CHECK(result == -1);
+        }
+
+        SUBCASE("send")
+        {
+            int result = u->Tx(nullptr);
+            CHECK(result == -1);
+        }
+    }
+    
 }
 
-size_t Uart::ReadEmulatedTx(char* buf, size_t max_len) {
-    if (emulated_tx_buffer.empty()) return 0;
-    size_t to_read = std::min(max_len, emulated_tx_buffer.size());
-    std::copy(emulated_tx_buffer.begin(), emulated_tx_buffer.begin() + to_read, buf);
-    emulated_tx_buffer.erase(emulated_tx_buffer.begin(), emulated_tx_buffer.begin() + to_read);
-    return to_read;
 }
-
-bool Uart::HasEmulatedTx() const {
-    return !emulated_tx_buffer.empty();
-}
-#endif

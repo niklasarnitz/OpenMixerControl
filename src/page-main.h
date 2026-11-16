@@ -3,6 +3,9 @@
 #include "page.h"
 using namespace std;
 
+namespace OMC
+{
+
 class PageMain : public Page
 {
     using enum MP_ID;
@@ -11,34 +14,6 @@ class PageMain : public Page
 
         uint bankingSends = 0;
         uint bankingSendsBefore = 0;
-        bool stereoControlsBound = false;
-
-        void BindMainEncoders()
-        {
-            bool useStereoControls = config->IsStereoLinkedMainRouted(config->GetUint(SELECTED_CHANNEL));
-
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_1, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_VOLUME);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_SEND_LR);
-
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_2, MixerparameterAction::CHANGE_SELECTED_CHANNEL, useStereoControls ? CHANNEL_STEREO_PAN : CHANNEL_PANORAMA);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_2, MixerparameterAction::RESET_SELECTED_CHANNEL, useStereoControls ? CHANNEL_STEREO_PAN : CHANNEL_PANORAMA);
-
-            if (useStereoControls)
-            {
-                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_3, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_STEREO_WIDTH);
-                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_3, MixerparameterAction::RESET_SELECTED_CHANNEL, CHANNEL_STEREO_WIDTH);
-            }
-            else
-            {
-                config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_3);
-                config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_3);
-            }
-
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_VOLUME_SUB);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_4, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_SEND_SUB);
-
-            stereoControlsBound = useStereoControls;
-        }
 
     public:
 
@@ -49,21 +24,18 @@ class PageMain : public Page
             tabIndex0 = 0;
             tabLayer1 = objects.hometab;
             tabIndex1 = 6;
-            led = X32_BTN_VIEW_MAIN;
             noLedOnRack = true;
         }
 
         void OnShow() override
         {
-            BindMainEncoders();
-        }
-
-        void OnChange(bool force_update) override
-        {
-            bool useStereoControls = config->IsStereoLinkedMainRouted(config->GetUint(SELECTED_CHANNEL));
-            if (force_update || useStereoControls != stereoControlsBound || config->HasParametersChanged({CHANNEL_LINKED, BUS_LINKED, CHANNEL_SEND_LR}))
-            {
-                BindMainEncoders();
-            }
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_1, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_VOLUME);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_SEND_LR);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_2, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_PANORAMA);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_2, MixerparameterAction::RESET_SELECTED_CHANNEL, CHANNEL_PANORAMA);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_VOLUME_SUB);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_4, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_SEND_SUB);
         }
 };
+
+}

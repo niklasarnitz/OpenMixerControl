@@ -2,6 +2,9 @@
 #include "page.h"
 using namespace std;
 
+namespace OMC
+{
+
 class PagePrototypeGui: public Page
 {
     private:
@@ -15,8 +18,7 @@ class PagePrototypeGui: public Page
             tabLayer0 = objects.maintab;
             tabIndex0 = 3;
             tabLayer1 = objects.setuptab;
-            tabIndex1 = 6;
-            led = X32_BTN_SETUP;
+            tabIndex1 = 5;
         } 
 
         void OnInit() override
@@ -42,3 +44,5 @@ class PagePrototypeGui: public Page
             }
         }
 };
+
+}
