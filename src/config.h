@@ -54,6 +54,10 @@ namespace OMC
 
             // old
             OMC_MODEL _model;
+            bool isSyncingStereoLink = false;
+
+            bool GetLinkChannels(MP_ID mp, uint index, uint& leftChannel, uint& rightChannel);
+            void SyncLinkedParameter(MP_ID mp, uint index);
 
         public:
 
@@ -107,6 +111,11 @@ namespace OMC
             void Toggle(MP_ID mp, uint index = 0);
             void Refresh(MP_ID mp, uint index = 0);
             void Reset(MP_ID mp, uint index = 0);
+
+            bool GetPeerVChannel(uint index, uint& peerIndex);
+            bool IsRightChannelOfLinkedPair(uint index);
+            bool IsStereoLinkedMainRouted(uint index);
+            void ApplyStereoPanWidth(uint index);
 
             MP_ID ParameterCalcId(SurfaceBindingParameter* binding_parameter);
             uint ParameterCalcIndex(SurfaceBindingParameter* binding_parameter);
@@ -188,4 +197,3 @@ namespace OMC
             vector<X32ConfigFileEntry> entries;
     };
 }
-
