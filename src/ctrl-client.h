@@ -81,6 +81,8 @@ class CtrlClient : public X32Base
         void syncSurface(bool fullSync);
         
         void SetLcdFromChannel(uint8_t p_boardId, uint8_t lcdIndex, uint8_t channelIndex);
+        String GetStereoPairLabel(uint channelIndex);
+        void SetLcdBalanceText(char* balanceText, uint channelIndex);
         void SetLcdFromAssign(uint8_t p_boardId, uint8_t lcdIndex, SurfaceElementId element_id);
         void GetAssignLcdText(LcdData *data, SurfaceElementId encoder, SurfaceElementId upper_button, SurfaceElementId lower_button);
 

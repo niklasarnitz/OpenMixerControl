@@ -307,7 +307,22 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
                     else 
                     {
                         lv_obj_set_flag(lvgl_encoder_widget->Slider, LV_OBJ_FLAG_HIDDEN, false);
-                        lv_slider_set_value(lvgl_encoder_widget->Slider, parameter->GetPercent(index), LV_ANIM_OFF);          
+                        if (id == MP_ID::CHANNEL_STEREO_WIDTH)
+                        {
+                            // show the stereo width as a range centered around the middle
+                            int width_percent = (int)parameter->GetPercent(index);
+                            int width_start = (100 - width_percent) / 2;
+                            lv_slider_set_mode(lvgl_encoder_widget->Slider, LV_SLIDER_MODE_RANGE);
+                            lv_slider_set_range(lvgl_encoder_widget->Slider, 0, 100);
+                            lv_slider_set_start_value(lvgl_encoder_widget->Slider, width_start, LV_ANIM_OFF);
+                            lv_slider_set_value(lvgl_encoder_widget->Slider, width_start + width_percent, LV_ANIM_OFF);
+                        }
+                        else
+                        {
+                            lv_slider_set_mode(lvgl_encoder_widget->Slider, LV_SLIDER_MODE_NORMAL);
+                            lv_slider_set_range(lvgl_encoder_widget->Slider, -2, 101);
+                            lv_slider_set_value(lvgl_encoder_widget->Slider, parameter->GetPercent(index), LV_ANIM_OFF);
+                        }
                     }
                 }
             }
