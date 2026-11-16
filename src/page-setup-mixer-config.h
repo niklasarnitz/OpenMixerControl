@@ -1,14 +1,14 @@
 #pragma once
 #include "page.h"
-#include "ctrl.h"
 
 using namespace std;
 
+namespace OMC
+{
+
 class PageSetupMixerConfig: public Page
 {
-#ifndef __clang__
     using enum MP_ID;
-#endif
 
     private:
         lv_obj_t* scroll_container = nullptr;
@@ -115,12 +115,10 @@ class PageSetupMixerConfig: public Page
             else if (mp_id == BUS_LINKED) { selected_type = 1; }
             else if (mp_id == MATRIX_LINKED) { selected_type = 2; }
             selected_idx[selected_type] = pair_index;
-            
-            // Toggle link parameter
-            config->Toggle(mp_id, pair_index);
-            
-            // Force redraw of all buttons to stay in sync
-            OnChange(true);
+
+            // Linking overwrites the right side, so touch goes through the same
+            // confirmation as the encoder buttons
+            ShowToggleConfirm(selected_type);
         }
 
         static void link_btn_event_cb(lv_event_t * e)
@@ -180,6 +178,7 @@ class PageSetupMixerConfig: public Page
             String message = String("Change ") + pair_label + String(" to ") + next_mode + String(" mode?");
 
             CloseConfirmBox();
+            OnChange(true); // move the focus outline to the pair in question
             confirm_prev_page = prevPage;
             confirm_next_page = nextPage;
             prevPage = X32_PAGE::NONE;
@@ -219,7 +218,6 @@ class PageSetupMixerConfig: public Page
             tabIndex0 = 3;
             tabLayer1 = objects.setuptab;
             tabIndex1 = 3;
-            led = X32_BTN_SETUP;
         }
 
         void OnInit() override
@@ -237,9 +235,9 @@ class PageSetupMixerConfig: public Page
             
             // Move the tab button to index 3 in the tab bar
             lv_obj_t* tab_bar = lv_tabview_get_tab_bar(objects.setuptab);
-            if (tab_bar && lv_obj_get_child_cnt(tab_bar) > 0)
+            if (tab_bar && lv_obj_get_child_count(tab_bar) > 0)
             {
-                lv_obj_t* tab_btn = lv_tabview_get_tab_button(objects.setuptab, -1);
+                lv_obj_t* tab_btn = lv_obj_get_child(tab_bar, lv_obj_get_child_count(tab_bar) - 1);
                 if (tab_btn) lv_obj_move_to_index(tab_btn, 3);
             }
             
@@ -299,7 +297,7 @@ class PageSetupMixerConfig: public Page
                 // Buttons
                 for (uint i = 0; i < count[c]; i++)
                 {
-                    lv_obj_t* btn = lv_btn_create(cols[c]);
+                    lv_obj_t* btn = lv_button_create(cols[c]);
                     lv_obj_set_size(btn, LV_PCT(95), 25);
                     lv_obj_set_style_radius(btn, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -347,6 +345,11 @@ class PageSetupMixerConfig: public Page
                     ConfirmPendingModeChange();
                     return;
                 }
+            }
+
+            if (!force_update && !config->HasParametersChanged({CHANNEL_LINKED, BUS_LINKED, MATRIX_LINKED}))
+            {
+                return;
             }
 
             // Redraw/re-style all buttons according to their state and current focus
@@ -402,3 +405,6 @@ class PageSetupMixerConfig: public Page
             }
         }
 };
+
+
+}

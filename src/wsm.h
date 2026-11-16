@@ -8,9 +8,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <math.h>
-#ifndef __APPLE__
 #include <linux/input.h>
-#endif
 #include <vector>
 
 // includes for UDP-communication
@@ -26,6 +24,9 @@
 #include <arpa/inet.h>
 
 #include "base.h"
+
+namespace OMC
+{
 
 class WSM : public X32Base {
     private:
@@ -47,3 +48,5 @@ class WSM : public X32Base {
         void SendPush();
         void SendCommand(String command, String ip);
 };
+
+}

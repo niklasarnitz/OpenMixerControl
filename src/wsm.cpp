@@ -37,6 +37,9 @@
 
 #include "wsm.h"
 
+namespace OMC
+{
+
 WSM::WSM(X32BaseParameter* basepar) : X32Base(basepar) {}
 
 int WSM::Init()
@@ -50,7 +53,7 @@ int WSM::Init()
         return -1;
     }
     
-    if (::bind(UdpHandle, (const struct sockaddr *)&ServerAddr, sizeof(ServerAddr)) < 0) {
+    if (bind(UdpHandle, (const struct sockaddr *)&ServerAddr, sizeof(ServerAddr)) < 0) {
         //fprintf(stderr, "Error on binding UDP-socket!");
         close(UdpHandle);
         return -1;
@@ -99,4 +102,6 @@ void WSM::SendCommand(String command, String ip)
         (struct sockaddr *) &Addr,
         sizeof(Addr)
     );
+}
+
 }
