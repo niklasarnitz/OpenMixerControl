@@ -3,6 +3,7 @@
 
 #include <map>
 #include <chrono>
+#include <string_view>
 
 // includes for reading IP-Address
 #include <sys/stat.h>
@@ -17,6 +18,9 @@
 namespace OMC
 {
     class Card;
+#ifdef TARGET_WING
+    class WingT55Control;
+#endif
     class OscServer : public X32Base 
     {
         private:
@@ -27,6 +31,13 @@ namespace OMC
             bool hasClients = false;
 
             std::map<WString::String, MP_ID>* oscPaths;
+#ifdef TARGET_WING
+            WingT55Control* wingT55 = nullptr;
+            bool wingUi = false;
+            void HandleWingUi(std::string_view packet);
+            void ReplyWingUi(std::string_view request);
+            void RenameWingInput(std::string_view address, std::string_view payload);
+#endif
             //std::map<WString::String, uint> clients;
             Card* recorder = nullptr;
             bool HandleCommand(const std::vector<std::string>& address, const char* format, tosc_message* message);
@@ -36,18 +47,21 @@ namespace OMC
             void ExpireObservers();
 
         public:
-            int UdpHandle;
+            int UdpHandle = -1;
             
             struct sockaddr_in ClientAddr;
 
             OscServer(X32BaseParameter* basepar);
+#ifdef TARGET_WING
+            OscServer(X32BaseParameter* basepar, bool wingUi, WingT55Control* wingT55);
+#endif
 
             int8_t Init();
             void UdpHandleCommunication();
             void Sync();
 
             void SetRecorder(Card* card) { recorder = card; }
-            void SendUdpPacket(char* buffer, uint16_t size);
+            void SendUdpPacket(const char* buffer, uint16_t size);
     };
 
 }
