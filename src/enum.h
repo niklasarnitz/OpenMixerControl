@@ -52,6 +52,7 @@ enum class X32_PAGE :int
         // sub-pages of setup
         SETUP_CARD,
         SETUP_SURFACE,
+        SETUP_MIXER_CONFIG,
         ABOUT,
         DEBUG,
         PROTOTYPEGUI,
@@ -506,8 +507,15 @@ enum class MP_ID {
     HEADAMP_GAIN = 282,
     HEADAMP_PHANTOM = 283,
 
+    // Stereo linking
+    CHANNEL_LINKED = 284,
+    BUS_LINKED = 285,
+    MATRIX_LINKED = 286,
+    CHANNEL_STEREO_PAN = 287,
+    CHANNEL_STEREO_WIDTH = 288,
+
     // Next free Number
-    __ELEMENT_COUNTER_DO_NOT_MOVE = 284
+    __ELEMENT_COUNTER_DO_NOT_MOVE = 289
 
 
     // !!!!!!!!!!!!!!!!!!!!  Danger Zone  !!!!!!!!!!!!!!!!!!
