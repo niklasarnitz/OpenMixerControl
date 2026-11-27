@@ -71,6 +71,7 @@ namespace OMC
             case FPGA_ROUTING:
             case DSP_ROUTING:
             case CHANNEL_LCD_MODE:
+            case COMP_MODEL:
             case CARD_NUMBER_OF_CHANNELS:
             case CARD_SDCARD_STATE:
             case CARD_AUDIO_SOURCE:
@@ -376,6 +377,17 @@ String Mixerparameter::GetUnitOfMeasurement(bool spaceInFront, uint index, bool 
                         break;
                     case DSP_TAP::PRE_FADER:
                         result += "Pre Fader";
+                        break;
+                }
+                break;
+            case COMP_MODEL:
+                switch((::COMPRESSOR_MODEL)(uint) (isResetLabel ? value_standard : value[index]))
+                {
+                    case ::COMPRESSOR_MODEL::STOCK:
+                        result += "Comp";
+                        break;
+                    case ::COMPRESSOR_MODEL::DBX160:
+                        result += "160";
                         break;
                 }
                 break;

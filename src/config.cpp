@@ -868,6 +868,14 @@ namespace OMC
         ->DefMinMaxStandard_Float(DYNAMICS_RELEASE_MIN, DYNAMICS_RELEASE_MAX, 150.0f, 0)
         ->DefOSC("ch_dyn_release");
 
+        // compressor model: stock or "160" (RMS compressor with program dependent
+        // attack/release, uses threshold, ratio and makeup only)
+        DefParameter(CHANNEL_DYNAMICS_MODEL, cat, "Model", MAX_VCHANNELS)
+        ->DefNameShort("Model")
+        ->DefUOM(MP_UOM::COMP_MODEL)
+        ->DefMinMaxStandard_Uint((uint)COMPRESSOR_MODEL::STOCK, (uint)COMPRESSOR_MODEL::DBX160, (uint)COMPRESSOR_MODEL::STOCK)
+        ->DefOSC("ch_dyn_model");
+
         // EQ
         cat = MP_CAT::CHANNEL_EQ;
 
@@ -1000,6 +1008,14 @@ namespace OMC
         ->DefUOM(MP_UOM::DBFS)
         ->DefMinMaxStandard_Int(-120, 0, -120)
         ->DefSilent();
+
+        // gain reduction of the "160" compressor mode as reported by DSP1, in 0.5 dB steps;
+        // published over OSC (only on change) for remote meters, written by DSP1 only
+        DefParameter(CHANNEL_DYNAMICS_160_GR, cat, String("160 Gain Reduction"), MAX_VCHANNELS)
+        ->DefNoConfig()
+        ->DefUOM(MP_UOM::DB)
+        ->DefMinMaxStandard_Float(0.0f, 30.0f, 0.0f, 1)
+        ->DefOSC("ch_dyn_160_gr");
 
         // ###########
         // # FX

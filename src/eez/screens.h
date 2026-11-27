@@ -85,6 +85,37 @@ typedef struct _objects_t {
     lv_obj_t *config_phantom_button;
     lv_obj_t *current_channel_gate;
     lv_obj_t *current_channel_comp;
+    lv_obj_t *dbx160;
+    lv_obj_t *dbx160__face;
+    lv_obj_t *dbx160__deco_1;
+    lv_obj_t *dbx160__deco_2;
+    lv_obj_t *dbx160__deco_3;
+    lv_obj_t *dbx160__deco_4;
+    lv_obj_t *dbx160__deco_5;
+    lv_obj_t *dbx160__deco_6;
+    lv_obj_t *dbx160__deco_8;
+    lv_obj_t *dbx160__meter;
+    lv_obj_t *dbx160__needle;
+    lv_obj_t *dbx160__deco_7;
+    lv_obj_t *dbx160__led_below;
+    lv_obj_t *dbx160__deco_9;
+    lv_obj_t *dbx160__led_above;
+    lv_obj_t *dbx160__deco_10;
+    lv_obj_t *dbx160__deco_11;
+    lv_obj_t *dbx160__threshold_arc;
+    lv_obj_t *dbx160__deco_12;
+    lv_obj_t *dbx160__deco_13;
+    lv_obj_t *dbx160__threshold_value;
+    lv_obj_t *dbx160__deco_14;
+    lv_obj_t *dbx160__ratio_arc;
+    lv_obj_t *dbx160__deco_15;
+    lv_obj_t *dbx160__deco_16;
+    lv_obj_t *dbx160__ratio_value;
+    lv_obj_t *dbx160__deco_17;
+    lv_obj_t *dbx160__output_arc;
+    lv_obj_t *dbx160__deco_18;
+    lv_obj_t *dbx160__deco_19;
+    lv_obj_t *dbx160__output_value;
     lv_obj_t *eqtab;
     lv_obj_t *current_channel_eq;
     lv_obj_t *eq1084;
@@ -1692,6 +1723,16 @@ typedef struct _objects_t {
 
 extern objects_t objects;
 
+typedef struct {
+    lv_scale_section_t *scale_section;
+} user_widget_dbx160_face_state_t;
+
+typedef struct {
+    user_widget_dbx160_face_state_t dbx160;
+} screen_main_state_t;
+
+extern screen_main_state_t screen_main_state;
+
 void create_screen_main();
 void tick_screen_main();
 
@@ -1709,6 +1750,9 @@ void tick_user_widget_widget_fx(int startWidgetIndex);
 
 void create_user_widget_routing_element(lv_obj_t *parent_obj, int startWidgetIndex);
 void tick_user_widget_routing_element(int startWidgetIndex);
+
+void create_user_widget_dbx160_face(lv_obj_t *parent_obj, int startWidgetIndex, user_widget_dbx160_face_state_t *state);
+void tick_user_widget_dbx160_face(int startWidgetIndex, user_widget_dbx160_face_state_t *state);
 
 void create_user_widget_eq1084_face(lv_obj_t *parent_obj, int startWidgetIndex);
 void tick_user_widget_eq1084_face(int startWidgetIndex);
@@ -1733,6 +1777,12 @@ typedef struct _groups_t {
 extern groups_t groups;
 
 void ui_create_groups();
+
+// Global state variables
+
+extern lv_style_t meter_section_main_style;
+extern lv_style_t meter_section_items_style;
+extern lv_style_t meter_section_indicator_style;
 
 #ifdef __cplusplus
 }

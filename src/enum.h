@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 
 typedef enum
 {
@@ -136,6 +138,13 @@ enum class MP_UOM {
     EQ1084_HIGH_FREQ,
     BANKING_EQ1084,
     BANKING_EQP1A,
+    COMP_MODEL, // COMPRESSOR_MODEL names
+};
+
+// compressor model ID per channel, also sent to the DSP
+enum class COMPRESSOR_MODEL : uint8_t {
+    STOCK = 0,
+    DBX160 = 1,
 };
 
 enum class MP_VALUE_TYPE {
@@ -551,8 +560,12 @@ enum class MP_ID {
     CHANNEL_EQP1A_DRIVE = 336,
     BANKING_EQP1A = 337,
 
+    // Compressor model
+    CHANNEL_DYNAMICS_MODEL = 338, // COMPRESSOR_MODEL
+    CHANNEL_DYNAMICS_160_GR = 339,
+
     // Next free Number
-    __ELEMENT_COUNTER_DO_NOT_MOVE = 338
+    __ELEMENT_COUNTER_DO_NOT_MOVE = 340
 
 
     // !!!!!!!!!!!!!!!!!!!!  Danger Zone  !!!!!!!!!!!!!!!!!!

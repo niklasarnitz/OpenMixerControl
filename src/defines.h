@@ -158,6 +158,7 @@ typedef unsigned int uint;
 #define DSP1_100_PERCENT_CYCLES 70000
 #define CYCLEMAP_SIZE			33
 #define SPI_DMA_COMMDATA_SIZE   3 + CYCLEMAP_SIZE + MAX_FPGA_TO_DSP1_CHANNELS + 3 + 100
+#define DSP1_DBX160_GAIN_INDEX  (3 + CYCLEMAP_SIZE + DSP_BUF_IDX_TALKBACK) // 40 gains of the "160" compressor mode, behind the meter values of DSP channels 1-92
 
 #define SURFACE_COLOR_BLACK 0
 #define SURFACE_COLOR_RED 1

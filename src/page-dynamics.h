@@ -1,6 +1,7 @@
 #pragma once
 
 #include "page.h"
+#include "dbx160-panel.h"
 
 using namespace std;
 
@@ -39,6 +40,9 @@ class PageDynamics: public Page {
 
             // store config pointer in user data for use in draw callback
             lv_obj_set_user_data(objects.current_channel_comp, config);
+
+            // faceplate of the "160" mode, shown instead of the curve
+            panel160.Bind();
             //chart-shadow: 0x7e4000
         }
 
@@ -48,16 +52,38 @@ class PageDynamics: public Page {
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_COMPRESSOR_ENABLE);
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_2, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_RATIO);
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_3, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_MAKEUP);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_ATTACK);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_5, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_HOLD);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_RELEASE);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_6, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_MODEL);
+
+            bound160 = Is160(config->GetUint(SELECTED_CHANNEL));
+            if (bound160)
+            {
+                // "160" mode: attack and release are program dependent, no time controls
+                config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_4);
+                config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_5);
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_MODEL);
+            }
+            else
+            {
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_ATTACK);
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_5, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_HOLD);
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_DYNAMICS_RELEASE);
+            }
         }
 
         void OnChange(bool force_update) override
         {
             uint chanIndex = config->GetUint(SELECTED_CHANNEL);
 
-            if (config->HasParametersChanged({CHANNEL_DYNAMICS_ATTACK, CHANNEL_DYNAMICS_HOLD, CHANNEL_DYNAMICS_RATIO, CHANNEL_DYNAMICS_RELEASE, CHANNEL_DYNAMICS_TRESHOLD}, chanIndex) ||
+            // the encoder set depends on the model of the selected channel; the mute group and
+            // utility displays own the encoders while active and rebind the page when they close
+            if (Is160(chanIndex) != bound160 &&
+                !config->GetBool(DISPLAY_MUTE_GROUP) && !config->GetBool(DISPLAY_UTILITY))
+            {
+                OnShow();
+            }
+
+            if (config->HasParametersChanged({CHANNEL_DYNAMICS_ATTACK, CHANNEL_DYNAMICS_HOLD, CHANNEL_DYNAMICS_RATIO, CHANNEL_DYNAMICS_RELEASE, CHANNEL_DYNAMICS_TRESHOLD,
+                    CHANNEL_DYNAMICS_MAKEUP, CHANNEL_DYNAMICS_MODEL}, chanIndex) ||
                 config->HasParameterChanged(SELECTED_CHANNEL) ||
                 force_update)
             {
@@ -69,9 +95,15 @@ class PageDynamics: public Page {
         {
             // TODO: Metering
 
-            int32_t compValueAudioDbfs = -120;
-
             uint8_t selectedChannelIndex = config->GetUint(SELECTED_CHANNEL);
+
+            if (selectedChannelIndex < 40 && Is160(selectedChannelIndex)) {
+                panel160.SetGainReduction(config->GetFloat(CHANNEL_DYNAMICS_160_GR, selectedChannelIndex),
+                    config->GetBool(CHANNEL_COMPRESSOR_ENABLE, selectedChannelIndex));
+                return; // the curve chart is hidden in this mode
+            }
+
+            int32_t compValueAudioDbfs = -120;
             if (selectedChannelIndex < 40) {
                 compValueAudioDbfs = helper->get_dbfs_from_peak_arm_opt(state->rChannel[selectedChannelIndex].meterDecay) * 100.0f;
             }
@@ -84,6 +116,12 @@ class PageDynamics: public Page {
     private:
         lv_chart_series_t* chartSeriesCompressor;
         lv_chart_series_t* chartSeriesCompressorAudio;
+        Dbx160Panel panel160;
+        bool bound160 = false; // encoders are bound for the "160" model
+
+        bool Is160(uint channelIndex) {
+            return (COMPRESSOR_MODEL)config->GetUint(CHANNEL_DYNAMICS_MODEL, channelIndex) == COMPRESSOR_MODEL::DBX160;
+        }
 
         static void draw_event_cb(lv_event_t * e) {
             lv_draw_task_t* draw_task = lv_event_get_draw_task(e);
@@ -141,6 +179,18 @@ class PageDynamics: public Page {
             if (selectedChannelIndex >= 40) {
                 return;
             }
+
+            bool mode160 = Is160(selectedChannelIndex);
+            panel160.SetVisible(mode160);
+            if (mode160) {
+                lv_obj_add_flag(objects.current_channel_comp, LV_OBJ_FLAG_HIDDEN);
+                panel160.SetControls(config->GetFloat(CHANNEL_DYNAMICS_TRESHOLD, selectedChannelIndex),
+                    config->GetFloat(CHANNEL_DYNAMICS_RATIO, selectedChannelIndex),
+                    config->GetFloat(CHANNEL_DYNAMICS_MAKEUP, selectedChannelIndex),
+                    DYNAMICS_THRESHOLD_MIN, DYNAMICS_THRESHOLD_MAX, DYNAMICS_RATIO_MAX, DYNAMICS_MAKEUP_MAX);
+                return;
+            }
+            lv_obj_remove_flag(objects.current_channel_comp, LV_OBJ_FLAG_HIDDEN);
 
             // calculate the compressor curve
             float compValue[200];

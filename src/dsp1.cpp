@@ -490,13 +490,17 @@ void DSP1::ResetEq(uint8_t chan)
     spi->QueueDspData(0, 'e', chan, 'r', 1, &values[0]);
 }
 
+// layout of the DSP1 status packet ('u'): the 160 gains follow the last meter value and fit in the packet
+static_assert(3 + CYCLEMAP_SIZE + DSP_BUF_IDX_TALKBACK - 1 < DSP1_DBX160_GAIN_INDEX, "160 gains overlap the meter values");
+static_assert(DSP1_DBX160_GAIN_INDEX + MAX_FPGA_TO_DSP1_CHANNELS <= (SPI_DMA_COMMDATA_SIZE), "160 gains exceed the DSP1 status packet");
+
 void DSP1::SendCompressor(uint8_t chanIndex)
 {
     helper->DEBUG_DSP1(DEBUGLEVEL_NORMAL, "SendCompressor() channelindex %d", chanIndex);
 
     using enum MP_ID;
 
-    float values[7];
+    float values[8];
 
     float samplerate = (float)config->GetUint(SAMPLERATE);
     float bufferrate = samplerate/(float)DSP_SAMPLES_IN_BUFFER;
@@ -522,9 +526,27 @@ void DSP1::SendCompressor(uint8_t chanIndex)
     // we are using -2.19722 with an additional factor of 1000.0f converts ms -> seconds)
     values[5] = 1.0f - exp(-2197.22457734f/(samplerate * config->GetFloat(CHANNEL_DYNAMICS_RELEASE, chanIndex)));
 
+    // on/off and the compressor model ID; the DSP runs the selected model only
     values[6] = config->GetBool(CHANNEL_COMPRESSOR_ENABLE, chanIndex) ? 1.0f : 0.0f;
+    values[7] = (float)(uint8_t)(COMPRESSOR_MODEL)config->GetUint(CHANNEL_DYNAMICS_MODEL, chanIndex);
 
-    spi->QueueDspData(0, 'c', chanIndex, 0, 7, &values[0]);
+    spi->QueueDspData(0, 'c', chanIndex, 0, 8, &values[0]);
+
+    // "160" mode, see OpenAudioDSP include/openaudiodsp/dbx160.h. Levels are log2 of the mean square.
+    // A single block rate RMS integrator with tau = 10/ln(10)/120 s gives the 120 dB/s release
+    // and the program dependent attack, so attack, hold and release are not used.
+    const float log2_10 = 3.321928095f;
+    const float tau160 = 10.0f / M_LN10 / 120.0f;
+    float values160[4];
+    // threshold as mean square in 32-bit fixed point scale
+    values160[0] = 2.0f * log2(pow(2.0f, 31.0f) - 1.0f) + config->GetFloat(CHANNEL_DYNAMICS_TRESHOLD, chanIndex) / 10.0f * log2_10;
+    // slope (1 - 1/ratio) / 2; the top of the ratio range is infinity:1, as shown on the faceplate
+    float ratio = config->GetFloat(CHANNEL_DYNAMICS_RATIO, chanIndex);
+    values160[1] = (ratio >= DYNAMICS_RATIO_MAX) ? 0.5f : 0.5f * (1.0f - 1.0f / ratio);
+    values160[2] = config->GetFloat(CHANNEL_DYNAMICS_MAKEUP, chanIndex) / 20.0f * log2_10;
+    values160[3] = 1.0f - exp(-1.0f / (bufferrate * tau160));
+
+    spi->QueueDspData(0, 'c', chanIndex, 'd', 4, &values160[0]);
 }
 
 void DSP1::SetInputDelay(uint chanIndex)
@@ -772,6 +794,24 @@ void DSP1::callbackDsp1(uint8_t classId, uint8_t channel, uint8_t index, uint8_t
                         MainChannelLR.meter[0] = abs(floatValues[c + DSP_BUF_IDX_MAINLEFT -1]); // convert 32-bit audio-value
                         MainChannelLR.meter[1] = abs(floatValues[c + DSP_BUF_IDX_MAINRIGHT -1]); // convert 32-bit audio-value
                         MainChannelSub.meter[0] = abs(floatValues[c + DSP_BUF_IDX_MAINSUB -1]); // convert 32-bit audio-value
+
+                        // gain reduction of the "160" compressor mode, the DSP reports the gain incl. output gain.
+                        // Quantized and set only when it moves by 1 dB or returns to 0: every Set is sent to all OSC clients.
+                        for (int i = 0; i < MAX_FPGA_TO_DSP1_CHANNELS; i++)
+                        {
+                            float reduction = 0.0f;
+                            if (config->GetBool(CHANNEL_COMPRESSOR_ENABLE, i) && (COMPRESSOR_MODEL)config->GetUint(CHANNEL_DYNAMICS_MODEL, i) == COMPRESSOR_MODEL::DBX160)
+                            {
+                                float gain = floatValues[DSP1_DBX160_GAIN_INDEX + i];
+                                reduction = config->GetFloat(CHANNEL_DYNAMICS_MAKEUP, i) - 20.0f * log10f(fmaxf(gain, 1e-6f));
+                                reduction = roundf(fminf(fmaxf(reduction, 0.0f), 30.0f) * 2.0f) * 0.5f;
+                            }
+                            float shown = config->GetFloat(CHANNEL_DYNAMICS_160_GR, i);
+                            if (reduction != shown && (fabsf(reduction - shown) >= 1.0f || reduction == 0.0f))
+                            {
+                                config->Set(CHANNEL_DYNAMICS_160_GR, reduction, i);
+                            }
+                        }
                     }
                     #if DSP1_DEBUG_SHOW_CYCLES
                     else if (helper->DEBUG_DSP1(DEBUGLEVEL_VERBOSE))
