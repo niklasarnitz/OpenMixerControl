@@ -28,6 +28,9 @@ class FxMath : X32Base {
         void fxCalcParameters_Delay(float data[], float delayMs[2]);
         void fxCalcParameters_MultibandCompressor(float data[], int channel, int band, float threshold, float ratio, float attack, float hold, float release, float makeup);
         void fxCalcParameters_MultibandCompressorFreq(float data[], int channel, float freq[4]);
+        // EQP-1A channel EQ: CHANNEL_EQP1A_COEFFS words in the order of openaudiodsp/eqp1a.h
+        static constexpr unsigned CHANNEL_EQP1A_COEFFS = 14;
+        static void fxCalcPultecChannelCoefficients(float data[], float samplerate, float lfFreq, float lfBoostDb, float lfAttenDb, float hfBoostFreq, float hfBoostDb, float bandwidth, float hfAttenFreq, float hfAttenDb, bool eqIn, bool tube, float driveDb);
         void fxCalcParameters_DynamicEQ(float data[], int band, int type, float frequency, float staticGain, float maxDynamicGain, float Q, float threshold, float ratio, float attack, float release);
 };
 

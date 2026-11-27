@@ -23,6 +23,7 @@
 */
 
 #include "mixer.h"
+#include "fx1084.h"
 
 namespace OMC
 {
@@ -437,13 +438,20 @@ void Mixer::Sync()
     }
 
     // EQ
+    auto model = [&](uint channel) {
+        return config->IsModelAnyWing() ? EQ_MODEL::PEQ : (EQ_MODEL)config->GetUint(CHANNEL_EQ_MODEL, channel);
+    };
+    auto uses1084 = [&](uint channel) { return model(channel) == EQ_MODEL::EQ1084; };
+    auto usesEqp1a = [&](uint channel) { return model(channel) == EQ_MODEL::EQP1A; };
+    auto eqSwitchChanged = [&](uint channel) {
+        return config->HasParameterChanged(CHANNEL_EQ_MODEL, channel) || config->HasParameterChanged(CHANNEL_EQ_ENABLE, channel);
+    };
     if (config->HasParametersChanged(MP_CAT::CHANNEL_EQ))
     {
         vector<uint> changedIndexes = config->GetChangedParameterIndexes(MP_CAT::CHANNEL_EQ);
         for (auto const& changedIndex : changedIndexes)
         {
-            // dsp->Channel holds only 40 Elements
-            if (changedIndex > 39)
+            if (changedIndex >= ChannelEq1084::CHANNEL_COUNT)
             {
                 continue;
             }
@@ -458,8 +466,46 @@ void Mixer::Sync()
                 state->rChannel[changedIndex].peq[peq].gain = config->GetFloat(config->MpCalcId(CHANNEL_EQ_GAIN1, peq), changedIndex);
             }
     
-            dsp->SendEQ(changedIndex);
+            if (usesEqp1a(changedIndex))
+            {
+                if (eqSwitchChanged(changedIndex))
+                    dsp->SendEqp1a(changedIndex);
+            }
+            else if (!uses1084(changedIndex))
+                dsp->SendEQ(changedIndex);
+            else if (eqSwitchChanged(changedIndex))
+                dsp->SendEq1084(changedIndex);
             dsp->SendLowcut(changedIndex);
+        }
+    }
+    // all EQ coefficients and the lowcut depend on the samplerate
+    if (config->HasParameterChanged(SAMPLERATE))
+    {
+        for (uint channel = 0; channel < ChannelEq1084::CHANNEL_COUNT; ++channel)
+        {
+            if (eqSwitchChanged(channel))
+                continue; // already sent by the CHANNEL_EQ loop above
+            if (uses1084(channel))
+                dsp->SendEq1084(channel);
+            else if (usesEqp1a(channel))
+                dsp->SendEqp1a(channel);
+            else
+                dsp->SendEQ(channel);
+            dsp->SendLowcut(channel);
+        }
+    }
+    else
+    {
+        for (uint channel : config->GetChangedParameterIndexes(MP_CAT::CHANNEL_EQ1084))
+        {
+            if (uses1084(channel) && !eqSwitchChanged(channel))
+                dsp->SendEq1084(channel);
+        }
+        // the EQP-1A glides, also with EQ out, where only its amplifier stays in
+        for (uint channel : config->GetChangedParameterIndexes(MP_CAT::CHANNEL_EQP1A))
+        {
+            if (usesEqp1a(channel) && !eqSwitchChanged(channel))
+                dsp->SendEqp1a(channel);
         }
     }
 

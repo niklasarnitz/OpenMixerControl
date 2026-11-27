@@ -1,7 +1,11 @@
 #include "config.h"
 #include "enum.h"
+#include "fx1084.h"
 #include "fx-osc.h"
 #include "../lib_ext/doctest/doctest/doctest.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace OMC
 {
@@ -884,6 +888,61 @@ namespace OMC
         ->DefNameShort("EQ En")
         ->DefStandard_Bool(false)
         ->DefOSC("ch_eq");
+
+        // EQ_MODEL: PEQ, 1084 or EQP-1A
+        DefParameter(CHANNEL_EQ_MODEL, cat, "EQ Model", ChannelEq1084::CHANNEL_COUNT)
+        ->DefUOM(MP_UOM::EQ1084_SELECT)->DefHideEncoderReset()
+        ->DefMinMaxStandard_Uint(0, (uint)EQ_MODEL::EQP1A, (uint)EQ_MODEL::PEQ)->DefOSC("ch_eq_model");
+
+        auto eq1084Control = [&](MP_ID id, const char* label, const char* path) {
+            return DefParameter(id, MP_CAT::CHANNEL_EQ1084, label, ChannelEq1084::CHANNEL_COUNT)->DefOSC(path);
+        };
+        auto eq1084Frequency = [&](MP_ID id, const char* label, const char* path, MP_UOM uom, uint initial) {
+            eq1084Control(id, label, path)->DefUOM(uom)
+                ->DefMinMaxStandard_Uint(0, ChannelEq1084::Frequencies(uom).size() - 1, initial);
+        };
+        auto eq1084Gain = [&](MP_ID id, const char* label, const char* path, float limit) {
+            eq1084Control(id, label, path)->DefUOM(MP_UOM::DB)->DefStepsize(ChannelEq1084::GAIN_STEP_DB)
+                ->DefMinMaxStandard_Float(-limit, limit, 0, 1);
+        };
+        eq1084Control(CHANNEL_EQ1084_ANALOG, "Analog", "ch_eq1084_analog")->DefStandard_Bool(false);
+        eq1084Control(CHANNEL_EQ1084_HI_Q, "Hi-Q", "ch_eq1084_hi_q")->DefStandard_Bool(false);
+        eq1084Frequency(CHANNEL_EQ1084_HP_FREQ, "HPF", "ch_eq1084_hp_freq", MP_UOM::EQ1084_HP_FREQ, 0);
+        eq1084Frequency(CHANNEL_EQ1084_LP_FREQ, "LPF", "ch_eq1084_lp_freq", MP_UOM::EQ1084_LP_FREQ, 0);
+        eq1084Frequency(CHANNEL_EQ1084_LOW_FREQ, "LF Freq", "ch_eq1084_low_freq", MP_UOM::EQ1084_LOW_FREQ, 2);
+        eq1084Frequency(CHANNEL_EQ1084_MID_FREQ, "MF Freq", "ch_eq1084_mid_freq", MP_UOM::EQ1084_MID_FREQ, 3);
+        eq1084Frequency(CHANNEL_EQ1084_HIGH_FREQ, "HF Freq", "ch_eq1084_high_freq", MP_UOM::EQ1084_HIGH_FREQ, 2);
+        eq1084Gain(CHANNEL_EQ1084_LOW_GAIN, "LF Gain", "ch_eq1084_low_gain", 16);
+        eq1084Gain(CHANNEL_EQ1084_MID_GAIN, "MF Gain", "ch_eq1084_mid_gain", ChannelEq1084::MID_GAIN_HI_Q_LIMIT_DB);
+        eq1084Gain(CHANNEL_EQ1084_HIGH_GAIN, "HF Gain", "ch_eq1084_high_gain", 16);
+        DefParameter(BANKING_EQ1084, MP_CAT::DISPLAY, "Bank")
+        ->DefUOM(MP_UOM::BANKING_EQ1084)->DefMinMaxStandard_Uint(0, 2, 0)->DefNoConfig();
+
+        // EQP-1A program EQ as channel EQ: the ranges and names of the FX-rack version;
+        // CHANNEL_EQ_ENABLE is its IN/OUT key
+        auto eqp1aControl = [&](MP_ID id, const char* label, const char* path) {
+            return DefParameter(id, MP_CAT::CHANNEL_EQP1A, label, ChannelEq1084::CHANNEL_COUNT)->DefOSC(path);
+        };
+        auto eqp1aPosition = [&](MP_ID id, const char* label, const char* path, MP_UOM uom, uint count, uint initial) {
+            eqp1aControl(id, label, path)->DefUOM(uom)->DefHideEncoderReset()->DefMinMaxStandard_Uint(0, count - 1, initial);
+        };
+        auto eqp1aGain = [&](MP_ID id, const char* label, const char* path, float max) {
+            eqp1aControl(id, label, path)->DefUOM(MP_UOM::DB)->DefStepsize(0.5f)->DefMinMaxStandard_Float(0.0f, max, 0.0f, 1);
+        };
+        eqp1aPosition(CHANNEL_EQP1A_LF_FREQ, "Lo Freq", "ch_eqp1a_lf_freq", MP_UOM::PULTEC_LF_FREQ, std::size(PULTEC_LF_FREQ_HZ), 2);
+        eqp1aGain(CHANNEL_EQP1A_LF_BOOST, "Lo Boost", "ch_eqp1a_lf_boost", 13.5f);
+        eqp1aGain(CHANNEL_EQP1A_LF_ATTEN, "Lo Att", "ch_eqp1a_lf_atten", 17.5f);
+        eqp1aPosition(CHANNEL_EQP1A_HF_BOOST_FREQ, "Hi Freq", "ch_eqp1a_hf_freq", MP_UOM::PULTEC_HF_BOOST_FREQ, std::size(PULTEC_HF_BOOST_FREQ_HZ), 4);
+        eqp1aGain(CHANNEL_EQP1A_HF_BOOST, "Hi Boost", "ch_eqp1a_hf_boost", 18.0f);
+        eqp1aControl(CHANNEL_EQP1A_HF_BANDWIDTH, "Hi Width", "ch_eqp1a_hf_width")->DefUOM(MP_UOM::PERCENT)
+            ->DefStepsize(0.05f)->DefMinMaxStandard_Float(0.0f, 1.0f, 0.5f);
+        eqp1aPosition(CHANNEL_EQP1A_HF_ATTEN_FREQ, "Hi-Att Freq", "ch_eqp1a_ha_freq", MP_UOM::PULTEC_HF_ATTEN_FREQ, std::size(PULTEC_HF_ATTEN_FREQ_HZ), 1);
+        eqp1aGain(CHANNEL_EQP1A_HF_ATTEN, "Hi Att", "ch_eqp1a_hf_atten", 16.0f);
+        eqp1aControl(CHANNEL_EQP1A_TUBE, "Tube", "ch_eqp1a_tube")->DefStandard_Bool(false);
+        eqp1aControl(CHANNEL_EQP1A_DRIVE, "Drive", "ch_eqp1a_drive")->DefUOM(MP_UOM::DB)
+            ->DefMinMaxStandard_Float(-12.0f, 12.0f, 0.0f);
+        DefParameter(BANKING_EQP1A, MP_CAT::DISPLAY, "Bank")
+        ->DefUOM(MP_UOM::BANKING_EQP1A)->DefMinMaxStandard_Uint(0, 2, 0)->DefNoConfig();
 
         uint channel_eq_count = 4;
         float channel_eq_freq[4] = {125.0f, 500.0f, 2000.0f, 10000.0f};
@@ -1883,6 +1942,13 @@ namespace OMC
         return mpm[(uint)mp]->GetPercent(index);
     }
 
+    float Config::GetEffectiveEq1084MidGain(uint channel)
+    {
+        const float limit = GetBool(CHANNEL_EQ1084_HI_Q, channel) ? ChannelEq1084::MID_GAIN_HI_Q_LIMIT_DB
+            : ChannelEq1084::MID_GAIN_NORMAL_LIMIT_DB;
+        return std::clamp(GetFloat(CHANNEL_EQ1084_MID_GAIN, channel), -limit, limit);
+    }
+
     bool Config::GetBlink(MP_ID mp)
     {
         return mpm[(uint)mp]->GetBlink();
@@ -1932,6 +1998,16 @@ namespace OMC
             MP_ID linkMp = mp;
             uint linkIndex = index;
             ResolveHeadampEdit(mp, index);
+            if (mp == CHANNEL_EQ1084_MID_GAIN)
+            {
+                if (!std::isfinite(value))
+                    return;
+                if (!GetBool(CHANNEL_EQ1084_HI_Q, index))
+                {
+                    constexpr float limit = ChannelEq1084::MID_GAIN_NORMAL_LIMIT_DB;
+                    value = std::clamp(value, -limit, limit);
+                }
+            }
             mpm[(uint)mp]->Set(value, index);
             SetParameterChanged(mp, index);
             ApplyStereoLink(linkMp, linkIndex, oldLink);
@@ -2038,6 +2114,15 @@ namespace OMC
             MP_ID linkMp = mp;
             uint linkIndex = index;
             ResolveHeadampEdit(mp, index);
+            if (mp == CHANNEL_EQ1084_MID_GAIN && index < ChannelEq1084::CHANNEL_COUNT && !GetBool(CHANNEL_EQ1084_HI_Q, index))
+            {
+                constexpr float limit = ChannelEq1084::MID_GAIN_NORMAL_LIMIT_DB;
+                const float gain = GetEffectiveEq1084MidGain(index);
+                const float next = std::clamp(gain + amount * ChannelEq1084::GAIN_STEP_DB, -limit, limit);
+                if (next != gain)
+                    Set(mp, next, index);
+                return;
+            }
             mpm[(uint)mp]->Change(amount, index);
             if (mp == SELECTED_CHANNEL && amount != 0 && IsStereoLinkedRight(GetUint(SELECTED_CHANNEL)))
             {
@@ -2498,6 +2583,8 @@ namespace OMC
             case MP_CAT::CHANNEL:
             case MP_CAT::CHANNEL_GATE:
             case MP_CAT::CHANNEL_EQ:
+            case MP_CAT::CHANNEL_EQ1084:
+            case MP_CAT::CHANNEL_EQP1A:
             case MP_CAT::CHANNEL_DYNAMICS:
             case MP_CAT::CHANNEL_SENDS:
                 if (parameter->GetType() == MP_VALUE_TYPE::STRING)
@@ -4680,5 +4767,30 @@ namespace OMC
         config.Set(CHANNEL_BUS_SEND01, -3.0f, bus);
         CHECK(config.GetFloat(CHANNEL_BUS_SEND02, bus) == -3.0f);
         CHECK(config.GetFloat(CHANNEL_BUS_SEND02, bus + 1) == -3.0f);
+    }
+
+    TEST_CASE("1084 mid gain follows Hi-Q without changing the stored gain on switch")
+    {
+        Helper helper;
+        Config config("X32", &helper, false);
+        constexpr auto gain = CHANNEL_EQ1084_MID_GAIN;
+        constexpr auto highQ = CHANNEL_EQ1084_HI_Q;
+
+        CHECK(config.GetParameter(gain)->GetMin() == -18.0f);
+        CHECK(config.GetParameter(gain)->GetMax() == 18.0f);
+        config.Set(gain, -18.0f);
+        CHECK(config.GetFloat(gain) == -12.0f);
+        config.Change(gain, 100);
+        CHECK(config.GetFloat(gain) == 12.0f);
+
+        config.Set(highQ, 1.0f);
+        config.Change(gain, 100);
+        CHECK(config.GetEffectiveEq1084MidGain(0) == 18.0f);
+        config.Set(highQ, 0.0f);
+        CHECK(config.GetEffectiveEq1084MidGain(0) == 12.0f);
+        config.Change(gain, 1);
+        CHECK(config.GetFloat(gain) == 18.0f);
+        config.Change(gain, -1);
+        CHECK(config.GetFloat(gain) == 11.5f);
     }
 }

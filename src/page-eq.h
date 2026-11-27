@@ -1,5 +1,10 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+
+#include "fx1084.h"
 #include "page.h"
 
 using namespace std;
@@ -38,29 +43,31 @@ class PageEq: public Page {
             lv_chart_set_series_color(objects.current_channel_eq, chartSeriesEQ, lv_color_hex(0xef7900));
             lv_chart_set_series_color(objects.current_channel_eq, chartSeriesEQPhase, lv_color_hex(0x008000));
             //chart-shadow: 0x7e4000
+
+            eqp1aSummary = lv_label_create(objects.eqtab);
+            lv_obj_set_style_text_align(eqp1aSummary, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_style_text_line_space(eqp1aSummary, 12, 0);
+            lv_obj_align(eqp1aSummary, LV_ALIGN_TOP_MID, 0, 48);
+            lv_obj_add_flag(eqp1aSummary, LV_OBJ_FLAG_HIDDEN);
         }
 
         void OnShow() override
         {
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_1, MixerparameterAction::CHANGE_SELECTED_CHANNEL, CHANNEL_LOWCUT_FREQ);
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_1, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_LOWCUT_ENABLE);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_2, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_FREQ1, (uint)BANKING_EQ);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_3, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_GAIN1, (uint)BANKING_EQ);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_Q1, (uint)BANKING_EQ);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_5, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_TYPE1, (uint)BANKING_EQ);
-            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE, BANKING_EQ);
             config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_6, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_EQ_ENABLE);
-
+            BindModelControls();
             DrawEq();
         }
 
         void OnChange(bool force_update) override
         {
-            if (config->HasParameterChanged(CHANNEL_LOWCUT_FREQ) ||
-                config->HasParametersChanged({MP_CAT::CHANNEL_EQ}) ||
-                config->HasParametersChanged({BANKING_EQ, SELECTED_CHANNEL}) ||
-                force_update
-            )
+            const bool rebind = force_update || config->HasParametersChanged({SELECTED_CHANNEL, CHANNEL_EQ_MODEL, BANKING_EQ1084, BANKING_EQP1A});
+            if (rebind)
+                BindModelControls();
+            if (rebind || config->HasParametersChanged(MP_CAT::CHANNEL_EQ) ||
+                config->HasParametersChanged(MP_CAT::CHANNEL_EQ1084) || config->HasParametersChanged(MP_CAT::CHANNEL_EQP1A) ||
+                config->HasParameterChanged(BANKING_EQ))
             {
                 DrawEq();
                 SyncEncoderWidgets(true);
@@ -72,9 +79,158 @@ class PageEq: public Page {
         lv_chart_series_t* chartSeriesEQPhase;
         FxMath* fxmath;
 
+        static constexpr MP_ID eq1084Banks[][4] = {
+            {CHANNEL_EQ1084_LOW_FREQ, CHANNEL_EQ1084_LOW_GAIN, CHANNEL_EQ1084_MID_FREQ, CHANNEL_EQ1084_MID_GAIN},
+            {CHANNEL_EQ1084_HIGH_FREQ, CHANNEL_EQ1084_HIGH_GAIN, CHANNEL_EQ1084_HI_Q, CHANNEL_EQ1084_ANALOG},
+            {CHANNEL_EQ1084_HP_FREQ, CHANNEL_EQ1084_LP_FREQ, NONE, NONE}
+        };
+        int32_t eq1084Needles[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+
+        static constexpr MP_ID eqp1aBanks[][4] = {
+            {CHANNEL_EQP1A_LF_FREQ, CHANNEL_EQP1A_LF_BOOST, CHANNEL_EQP1A_LF_ATTEN, CHANNEL_EQP1A_TUBE},
+            {CHANNEL_EQP1A_HF_BOOST_FREQ, CHANNEL_EQP1A_HF_BOOST, CHANNEL_EQP1A_HF_BANDWIDTH, CHANNEL_EQP1A_DRIVE},
+            {CHANNEL_EQP1A_HF_ATTEN_FREQ, CHANNEL_EQP1A_HF_ATTEN, NONE, NONE}
+        };
+        lv_obj_t* eqp1aSummary;
+
+        EQ_MODEL Model(uint channel)
+        {
+            return Supports1084(channel) ? (EQ_MODEL)config->GetUint(CHANNEL_EQ_MODEL, channel) : EQ_MODEL::PEQ;
+        }
+
+        bool Supports1084(uint channel)
+        {
+            return channel < ChannelEq1084::CHANNEL_COUNT && !config->IsModelAnyWing();
+        }
+
+        void BindModelControls()
+        {
+            const uint channel = config->GetUint(SELECTED_CHANNEL);
+            if (Supports1084(channel))
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_5, MixerparameterAction::TOGGLE_SELECTED_CHANNEL, CHANNEL_EQ_MODEL);
+            else
+                config->SurfaceUnbind(SurfaceElementId::DISPLAY_ENCODER_BUTTON_5);
+
+            const EQ_MODEL model = Model(channel);
+            if (model != EQ_MODEL::PEQ)
+            {
+                const bool eqp1a = model == EQ_MODEL::EQP1A;
+                const MP_ID banking = eqp1a ? BANKING_EQP1A : BANKING_EQ1084;
+                const auto& bank = eqp1a ? eqp1aBanks[config->GetUint(banking)] : eq1084Banks[config->GetUint(banking)];
+                for (uint i = 0; i < std::size(bank); ++i)
+                {
+                    const auto encoder = static_cast<SurfaceElementId>(static_cast<uint>(SurfaceElementId::DISPLAY_ENCODER_2) + i);
+                    if (bank[i] == NONE)
+                        config->SurfaceUnbind(encoder);
+                    else
+                        config->SurfaceBind(encoder, MixerparameterAction::CHANGE_SELECTED_CHANNEL, bank[i]);
+                }
+                config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE, banking);
+                return;
+            }
+
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_2, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_FREQ1, (uint)BANKING_EQ);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_3, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_GAIN1, (uint)BANKING_EQ);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_4, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_Q1, (uint)BANKING_EQ);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_5, MixerparameterAction::CHANGE__MP_INDIRECT__SELECTED_CHANNEL, CHANNEL_EQ_TYPE1, (uint)BANKING_EQ);
+            config->SurfaceBind(SurfaceElementId::DISPLAY_ENCODER_6, MixerparameterAction::CHANGE, BANKING_EQ);
+        }
+
+        void Draw1084(uint channel)
+        {
+            const auto& bank = eq1084Banks[config->GetUint(BANKING_EQ1084)];
+            auto inBank = [&](MP_ID id) { return std::find(std::begin(bank), std::end(bank), id) != std::end(bank); };
+            auto setText = [](lv_obj_t* label, const char* text) {
+                if (std::strcmp(lv_label_get_text(label), text) != 0)
+                    lv_label_set_text(label, text);
+            };
+            auto setTextColor = [](lv_obj_t* label, uint32_t rgb) {
+                const auto color = lv_color_hex(rgb);
+                if (!lv_color_eq(lv_obj_get_style_text_color(label, LV_PART_MAIN), color))
+                    lv_obj_set_style_text_color(label, color, LV_PART_MAIN);
+            };
+            const struct {
+                MP_ID id;
+                lv_obj_t* scale;
+                lv_obj_t* needle;
+                lv_obj_t* value;
+                bool gain;
+            } dials[] = {
+                {CHANNEL_EQ1084_HIGH_FREQ, objects.eq1084__hf_freq_scale, objects.eq1084__hf_freq_needle, objects.eq1084__hf_freq_value, false},
+                {CHANNEL_EQ1084_HIGH_GAIN, objects.eq1084__hf_gain_scale, objects.eq1084__hf_gain_needle, objects.eq1084__hf_gain_value, true},
+                {CHANNEL_EQ1084_MID_FREQ, objects.eq1084__mf_freq_scale, objects.eq1084__mf_freq_needle, objects.eq1084__mf_freq_value, false},
+                {CHANNEL_EQ1084_MID_GAIN, objects.eq1084__mf_gain_scale, objects.eq1084__mf_gain_needle, objects.eq1084__mf_gain_value, true},
+                {CHANNEL_EQ1084_LOW_FREQ, objects.eq1084__lf_freq_scale, objects.eq1084__lf_freq_needle, objects.eq1084__lf_freq_value, false},
+                {CHANNEL_EQ1084_LOW_GAIN, objects.eq1084__lf_gain_scale, objects.eq1084__lf_gain_needle, objects.eq1084__lf_gain_value, true},
+                {CHANNEL_EQ1084_HP_FREQ, objects.eq1084__hp_freq_scale, objects.eq1084__hp_freq_needle, objects.eq1084__hp_freq_value, false},
+                {CHANNEL_EQ1084_LP_FREQ, objects.eq1084__lp_freq_scale, objects.eq1084__lp_freq_needle, objects.eq1084__lp_freq_value, false},
+            };
+            static_assert(std::size(dials) == std::size(eq1084Needles));
+            for (size_t i = 0; i < std::size(dials); ++i)
+            {
+                const auto& dial = dials[i];
+                auto* param = config->GetParameter(dial.id);
+                const bool midGain = dial.id == CHANNEL_EQ1084_MID_GAIN;
+                const float value = midGain ? config->GetEffectiveEq1084MidGain(channel) : config->GetFloat(dial.id, channel);
+                const int32_t max = lv_scale_get_range_max_value(dial.scale);
+                // Discrete switches follow their EEZ detents; gains sweep the inner cap.
+                int32_t position;
+                if (dial.gain)
+                {
+                    const float limit = param->GetMax();
+                    const float gain = std::isfinite(value) ? std::clamp(value, -limit, limit) : 0.0f;
+                    position = std::lround((gain + limit) * max / (2 * limit));
+                }
+                else
+                    position = value >= 0 && value < max + 1 ? (int32_t)value : 0;
+                if (eq1084Needles[i] != position)
+                {
+                    eq1084Needles[i] = position;
+                    lv_scale_set_line_needle_value(dial.scale, dial.needle, dial.gain ? -6 : -16, position);
+                }
+                setText(dial.value, (midGain ? String(value, 1) + "dB" : param->GetFormatedValue(channel)).c_str());
+                setTextColor(dial.value, inBank(dial.id) ? 0xffc36b : 0xf3eddd);
+            }
+
+            auto showSwitch = [&](MP_ID id, lv_obj_t* title, lv_obj_t* lamp, lv_obj_t* label, const char* on, const char* off) {
+                const bool enabled = config->GetBool(id, channel);
+                const uint8_t brightness = enabled ? LV_LED_BRIGHT_MAX : LV_LED_BRIGHT_MIN;
+                if (lv_led_get_brightness(lamp) != brightness)
+                    lv_led_set_brightness(lamp, brightness);
+                setText(label, enabled ? on : off);
+                setTextColor(title, inBank(id) ? 0x863a0e : 0x162a34);
+            };
+            showSwitch(CHANNEL_EQ1084_HI_Q, objects.eq1084__hiq_title, objects.eq1084__hiq_lamp, objects.eq1084__hiq_value, "On", "Off");
+            showSwitch(CHANNEL_EQ_ENABLE, objects.eq1084__eq_title, objects.eq1084__eq_lamp, objects.eq1084__eq_value, "In", "Bypass");
+            showSwitch(CHANNEL_EQ1084_ANALOG, objects.eq1084__analog_title, objects.eq1084__analog_lamp, objects.eq1084__analog_value, "On", "Off");
+        }
+
         void DrawEq() {
 
             uint selectedChannelIndex = config->GetUint(SELECTED_CHANNEL);
+            const EQ_MODEL model = Model(selectedChannelIndex);
+            bool show1084 = model == EQ_MODEL::EQ1084;
+            bool showEqp1a = model == EQ_MODEL::EQP1A;
+            lv_obj_set_flag(objects.eq1084, LV_OBJ_FLAG_HIDDEN, !show1084);
+            lv_obj_set_flag(eqp1aSummary, LV_OBJ_FLAG_HIDDEN, !showEqp1a);
+            lv_obj_set_flag(objects.current_channel_eq, LV_OBJ_FLAG_HIDDEN, show1084 || showEqp1a);
+            if (showEqp1a)
+            {
+                auto value = [&](MP_ID id) { return config->GetParameter(id)->GetFormatedValue(selectedChannelIndex); };
+                lv_label_set_text_fmt(eqp1aSummary,
+                    "EQP-1A PROGRAM EQ  /  %s\n\nLO   %s    Boost %s    Att %s\nHI   %s    Boost %s    Width %s\nHI ATT   %s    %s\n\nTube   %s     Drive   %s",
+                    config->GetBool(CHANNEL_EQ_ENABLE, selectedChannelIndex) ? "IN" : "OUT",
+                    value(CHANNEL_EQP1A_LF_FREQ).c_str(), value(CHANNEL_EQP1A_LF_BOOST).c_str(), value(CHANNEL_EQP1A_LF_ATTEN).c_str(),
+                    value(CHANNEL_EQP1A_HF_BOOST_FREQ).c_str(), value(CHANNEL_EQP1A_HF_BOOST).c_str(), value(CHANNEL_EQP1A_HF_BANDWIDTH).c_str(),
+                    value(CHANNEL_EQP1A_HF_ATTEN_FREQ).c_str(), value(CHANNEL_EQP1A_HF_ATTEN).c_str(),
+                    config->GetBool(CHANNEL_EQP1A_TUBE, selectedChannelIndex) ? "On" : "Off", value(CHANNEL_EQP1A_DRIVE).c_str());
+                return;
+            }
+            if (show1084)
+            {
+                Draw1084(selectedChannelIndex);
+                return;
+            }
 
             // Draw EQ only for normal and aux channels
             if (selectedChannelIndex >= int(X32_VCHANNEL_BLOCK::FXRET)) {

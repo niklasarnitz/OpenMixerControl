@@ -26,6 +26,7 @@
 
 #include "const.h"
 #include "defines.h"
+#include "fx1084.h"
 #include "helper.h"
 #include <cstdint>
 
@@ -440,6 +441,44 @@ void DSP1::SendEQ(uint chanIndex)
     values[(MAX_CHAN_EQS * 5)] = config->GetBool(CHANNEL_EQ_ENABLE, chanIndex);
 
     spi->QueueDspData(0, 'e', chanIndex, 'e', (MAX_CHAN_EQS * 5) + 1, &values[0]);
+}
+
+void DSP1::SendEq1084(uint channel)
+{
+    auto enabled = [&](MP_ID id) { return config->GetBool(id, channel) ? 1.0f : 0.0f; };
+    auto frequency = [&](MP_ID id, std::span<const float> detents) {
+        return ChannelEq1084::FrequencyAt(detents, config->GetFloat(id, channel));
+    };
+    // IN/OUT bypasses the filters only; the analog stage has its own switch.
+    float values[] = {
+        enabled(CHANNEL_EQ_ENABLE), enabled(CHANNEL_EQ1084_HI_Q),
+        frequency(CHANNEL_EQ1084_HP_FREQ, ChannelEq1084::HP_HZ), frequency(CHANNEL_EQ1084_LP_FREQ, ChannelEq1084::LP_HZ),
+        frequency(CHANNEL_EQ1084_LOW_FREQ, ChannelEq1084::LOW_HZ), frequency(CHANNEL_EQ1084_MID_FREQ, ChannelEq1084::MID_HZ),
+        frequency(CHANNEL_EQ1084_HIGH_FREQ, ChannelEq1084::HIGH_HZ),
+        config->GetFloat(CHANNEL_EQ1084_LOW_GAIN, channel), config->GetFloat(CHANNEL_EQ1084_MID_GAIN, channel),
+        config->GetFloat(CHANNEL_EQ1084_HIGH_GAIN, channel), enabled(CHANNEL_EQ1084_ANALOG),
+        (float)config->GetUint(SAMPLERATE)
+    };
+    spi->QueueDspData(0, 'e', channel, 'n', std::size(values), values);
+}
+
+void DSP1::SendEqp1a(uint channel)
+{
+    // CHANNEL_EQ_ENABLE is the IN/OUT key: out glides all curves to zero, the amplifier stays
+    auto position = [&](MP_ID id, const float* detents, uint count) {
+        return detents[std::min<uint>(config->GetUint(id, channel), count - 1)];
+    };
+    float values[1 + FxMath::CHANNEL_EQP1A_COEFFS];
+    values[0] = 1.0f;
+    FxMath::fxCalcPultecChannelCoefficients(&values[1], (float)config->GetUint(SAMPLERATE),
+        position(CHANNEL_EQP1A_LF_FREQ, PULTEC_LF_FREQ_HZ, std::size(PULTEC_LF_FREQ_HZ)),
+        config->GetFloat(CHANNEL_EQP1A_LF_BOOST, channel), config->GetFloat(CHANNEL_EQP1A_LF_ATTEN, channel),
+        position(CHANNEL_EQP1A_HF_BOOST_FREQ, PULTEC_HF_BOOST_FREQ_HZ, std::size(PULTEC_HF_BOOST_FREQ_HZ)),
+        config->GetFloat(CHANNEL_EQP1A_HF_BOOST, channel), config->GetFloat(CHANNEL_EQP1A_HF_BANDWIDTH, channel),
+        position(CHANNEL_EQP1A_HF_ATTEN_FREQ, PULTEC_HF_ATTEN_FREQ_HZ, std::size(PULTEC_HF_ATTEN_FREQ_HZ)),
+        config->GetFloat(CHANNEL_EQP1A_HF_ATTEN, channel), config->GetBool(CHANNEL_EQ_ENABLE, channel),
+        config->GetBool(CHANNEL_EQP1A_TUBE, channel), config->GetFloat(CHANNEL_EQP1A_DRIVE, channel));
+    spi->QueueDspData(0, 'e', channel, 'p', std::size(values), values);
 }
 
 void DSP1::ResetEq(uint8_t chan)

@@ -286,8 +286,10 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
         {
             uint index = config->ParameterCalcIndex(surface_binding_encoder);
             MP_ID id = config->ParameterCalcId(surface_binding_encoder);
+            const bool midGain = id == CHANNEL_EQ1084_MID_GAIN;
 
-            if(config->HasParameterChanged(id, index) || force)
+            if (config->HasParameterChanged(id, index) || force ||
+                (midGain && config->HasParameterChanged(CHANNEL_EQ1084_HI_Q, index)))
             {
                 if (id == MP_ID::NONE)
                 {
@@ -296,8 +298,10 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
                 else
                 { 
                     Mixerparameter* parameter = config->GetParameter(id);
-
-                    lv_label_set_text(lvgl_encoder_widget->Label, parameter->GetLabelAndValue(index).c_str());
+                    const float gain = midGain ? config->GetEffectiveEq1084MidGain(index) : 0.0f;
+                    const String text = midGain ? parameter->GetName() + ": " + String(gain, 1) + "dB"
+                        : parameter->GetLabelAndValue(index);
+                    lv_label_set_text(lvgl_encoder_widget->Label, text.c_str());
 
                     // Hide or Show Slider 
                     if (parameter->GetHideEncoderSlider())
@@ -320,7 +324,10 @@ void Page::SyncEncoderWidget(SurfaceElementId elementIdEncoder, SurfaceElementId
                         {
                             lv_slider_set_mode(lvgl_encoder_widget->Slider, LV_SLIDER_MODE_NORMAL);
                             lv_slider_set_range(lvgl_encoder_widget->Slider, -2, 101);
-                            lv_slider_set_value(lvgl_encoder_widget->Slider, parameter->GetPercent(index), LV_ANIM_OFF);
+                            const uint percent = midGain
+                                ? (uint)((gain - parameter->GetMin()) * 100.0f / (parameter->GetMax() - parameter->GetMin()))
+                                : parameter->GetPercent(index);
+                            lv_slider_set_value(lvgl_encoder_widget->Slider, percent, LV_ANIM_OFF);
                         }
                     }
                 }

@@ -125,6 +125,17 @@ enum class MP_UOM {
     CARD_AUDIO_SOURCE,
     PANORAMA,
     BANKING_EQ,
+    PULTEC_LF_FREQ,
+    PULTEC_HF_BOOST_FREQ,
+    PULTEC_HF_ATTEN_FREQ,
+    EQ1084_SELECT,
+    EQ1084_HP_FREQ,
+    EQ1084_LP_FREQ,
+    EQ1084_LOW_FREQ,
+    EQ1084_MID_FREQ,
+    EQ1084_HIGH_FREQ,
+    BANKING_EQ1084,
+    BANKING_EQP1A,
 };
 
 enum class MP_VALUE_TYPE {
@@ -158,6 +169,8 @@ enum class MP_CAT
     FX_PARAMETER_DYNAMICEQ,
     DISPLAY,
     DMX,
+    CHANNEL_EQ1084,
+    CHANNEL_EQP1A,
 
     __ELEMENT_COUNTER_DO_NOT_MOVE
 };
@@ -511,8 +524,35 @@ enum class MP_ID {
     CHANNEL_STEREO_LINK = 284,
     CHANNEL_STEREO_WIDTH = 285,
 
+    // 293–314 were used by the experimental rack version; do not reuse them.
+    CHANNEL_EQ_MODEL = 315,
+    CHANNEL_EQ1084_ANALOG = 316,
+    CHANNEL_EQ1084_HI_Q = 317,
+    CHANNEL_EQ1084_HP_FREQ = 318,
+    CHANNEL_EQ1084_LP_FREQ = 319,
+    CHANNEL_EQ1084_LOW_FREQ = 320,
+    CHANNEL_EQ1084_LOW_GAIN = 321,
+    CHANNEL_EQ1084_MID_FREQ = 322,
+    CHANNEL_EQ1084_MID_GAIN = 323,
+    CHANNEL_EQ1084_HIGH_FREQ = 324,
+    CHANNEL_EQ1084_HIGH_GAIN = 325,
+    BANKING_EQ1084 = 326,
+
+    // EQP-1A program EQ as channel EQ (CHANNEL_EQ_MODEL 2); EQ in/out is CHANNEL_EQ_ENABLE
+    CHANNEL_EQP1A_LF_FREQ = 327,
+    CHANNEL_EQP1A_LF_BOOST = 328,
+    CHANNEL_EQP1A_LF_ATTEN = 329,
+    CHANNEL_EQP1A_HF_BOOST_FREQ = 330,
+    CHANNEL_EQP1A_HF_BOOST = 331,
+    CHANNEL_EQP1A_HF_BANDWIDTH = 332,
+    CHANNEL_EQP1A_HF_ATTEN_FREQ = 333,
+    CHANNEL_EQP1A_HF_ATTEN = 334,
+    CHANNEL_EQP1A_TUBE = 335,
+    CHANNEL_EQP1A_DRIVE = 336,
+    BANKING_EQP1A = 337,
+
     // Next free Number
-    __ELEMENT_COUNTER_DO_NOT_MOVE = 286
+    __ELEMENT_COUNTER_DO_NOT_MOVE = 338
 
 
     // !!!!!!!!!!!!!!!!!!!!  Danger Zone  !!!!!!!!!!!!!!!!!!
@@ -1114,6 +1154,18 @@ enum class FX_TYPE : int {
 
     __ELEMENT_COUNTER_DO_NOT_MOVE
 };
+
+// Values of CHANNEL_EQ_MODEL
+enum class EQ_MODEL : unsigned {
+    PEQ = 0,
+    EQ1084 = 1,
+    EQP1A = 2,
+};
+
+// Selector positions of the program equalizer, as printed in the EQP-1A specifications
+inline constexpr float PULTEC_LF_FREQ_HZ[] = {20.0f, 30.0f, 60.0f, 100.0f};
+inline constexpr float PULTEC_HF_BOOST_FREQ_HZ[] = {3000.0f, 4000.0f, 5000.0f, 8000.0f, 10000.0f, 12000.0f, 16000.0f};
+inline constexpr float PULTEC_HF_ATTEN_FREQ_HZ[] = {5000.0f, 10000.0f, 20000.0f};
 
 enum class X32_COLOR : int {
     BLACK = 0,

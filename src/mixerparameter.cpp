@@ -23,6 +23,7 @@
 */
 
 #include "mixerparameter.h"
+#include "fx1084.h"
 
 #include "../lib_ext/doctest/doctest/doctest.h"
 
@@ -42,9 +43,31 @@ namespace OMC
 
         switch (unitOfMeasurement)
         {
+            case EQ1084_SELECT:
+                return value_float == (float)EQ_MODEL::EQP1A ? "EQP-1A" : value_float != 0 ? "1084" : "PEQ";
+            case BANKING_EQP1A:
+                return value_float == 0 ? "Lo / Tube" : value_float == 1 ? "Hi Boost / Drive" : "Hi Att";
+            case BANKING_EQ1084:
+                return value_float == 0 ? "LF / MF" : value_float == 1 ? "HF / Analog" : "HPF / LPF";
+            case EQ1084_HP_FREQ:
+            case EQ1084_LP_FREQ:
+            case EQ1084_LOW_FREQ:
+            case EQ1084_MID_FREQ:
+            case EQ1084_HIGH_FREQ:
+            {
+                const float hz = ChannelEq1084::FrequencyAt(ChannelEq1084::Frequencies(unitOfMeasurement), value_float);
+                if (hz == 0)
+                    return "Off";
+                if (hz >= 1000)
+                    return String(hz / 1000, static_cast<unsigned>(hz) % 1000 == 0 ? 0 : 1) + " kHz";
+                return String(hz, 0) + " Hz";
+            }
             case TAPPOINT:
             case EQ_TYPE:
             case FX_TYPE:
+            case PULTEC_LF_FREQ:
+            case PULTEC_HF_BOOST_FREQ:
+            case PULTEC_HF_ATTEN_FREQ:
             case FPGA_ROUTING:
             case DSP_ROUTING:
             case CHANNEL_LCD_MODE:
@@ -131,6 +154,24 @@ String Mixerparameter::GetUnitOfMeasurement(bool spaceInFront, uint index, bool 
                     default:
                         result += "Unknown EQ Bank";
                         break;
+                }
+                break;
+            case PULTEC_LF_FREQ:
+            case PULTEC_HF_BOOST_FREQ:
+            case PULTEC_HF_ATTEN_FREQ:
+                {
+                    const float* freqs = PULTEC_LF_FREQ_HZ;
+                    uint count = std::size(PULTEC_LF_FREQ_HZ);
+                    if (unitOfMeasurement == PULTEC_HF_BOOST_FREQ) {
+                        freqs = PULTEC_HF_BOOST_FREQ_HZ;
+                        count = std::size(PULTEC_HF_BOOST_FREQ_HZ);
+                    } else if (unitOfMeasurement == PULTEC_HF_ATTEN_FREQ) {
+                        freqs = PULTEC_HF_ATTEN_FREQ_HZ;
+                        count = std::size(PULTEC_HF_ATTEN_FREQ_HZ);
+                    }
+                    uint position = (uint) (isResetLabel ? value_standard : value[index]);
+                    float freq = freqs[position < count ? position : count - 1];
+                    result += (freq >= 1000.0f) ? String(freq / 1000.0f, 0) + " kHz" : String(freq, 0) + " Hz";
                 }
                 break;
             case EQ_TYPE:

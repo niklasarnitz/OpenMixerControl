@@ -773,6 +773,8 @@ class Mixerparameter
                 category == MP_CAT::CHANNEL || 
                 category == MP_CAT::CHANNEL_DYNAMICS ||
                 category == MP_CAT::CHANNEL_EQ ||
+                category == MP_CAT::CHANNEL_EQ1084 ||
+                category == MP_CAT::CHANNEL_EQP1A ||
                 category == MP_CAT::CHANNEL_GATE ||
                 category == MP_CAT::CHANNEL_SENDS;
         }

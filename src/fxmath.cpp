@@ -24,6 +24,9 @@
 
 #include "fxmath.h"
 
+#include <complex>
+#include "../lib_ext/doctest/doctest/doctest.h"
+
 namespace OMC
 {
 
@@ -420,6 +423,132 @@ void FxMath::fxCalcParameters_DynamicEQ(float data[], int band, int type, float 
   float fs = (float)config->GetUint(MP_ID::SAMPLERATE)/(16.0f); // 16 samples per buffer
   data[9] = 1.0f - exp(-1000.0f / (fs * attack)); // convert ms to coeff
   data[10] = 1.0f - exp(-1000.0f / (fs * release)); // convert ms to coeff
+}
+
+// Clean-room program equalizer after the published Pulse Techniques EQP-1A
+// specifications and operating instructions (no plugin code, schematics or
+// measured hardware curves are used):
+//   20/30/60/100 cps shelf boost 0..13.5 dB and shelf attenuate 0..17.5 dB,
+//   3/4/5/8/10/12/16 kcs peak boost 0..18 dB with bandwidth sharp..broad,
+//   5/10/20 kcs shelf attenuate 0..16 dB, IN/OUT key zeroes all curves while
+//   the amplifier stays in circuit; push-pull amplifier with 0.15 % distortion
+//   at +10 dBm and +21 dBm maximum peak output.
+// Modelling choices where the documents give no numbers:
+//   - both low curves have their half-gain (dB) point at the selected
+//     frequency, the attenuate curve half an octave higher. The boost is a
+//     second-order shelf (Q 0.707), the attenuate a gentler first-order
+//     shelf, so simultaneous boost and attenuate give the well-known low
+//     bump with a shallow dip above it.
+//   - the high boost is a resonant peak whose pole Q goes from 2.0 (sharp)
+//     to 0.5 (broad); the boost changes only the zeros, so the peak gain
+//     equals the boost at every bandwidth.
+//   - the high attenuate is a first-order shelf with its half-gain point at
+//     the selected frequency.
+//   - the amplifier is an odd-order cubic (push-pull cancels even orders),
+//     scaled so that at 0 dB drive digital full scale corresponds to +21 dBm
+//     and a +10 dBm sine produces exactly 0.15 % THD.
+// Coefficients for the channel EQ kernel (OpenAudioDSP eqp1a.c), in the order of its
+// EQP1A_* enum. The DSP runs the low curves as trapezoidal integrators, whose
+// coefficients keep the shelf gains in float32 where direct-form ones near DC are off
+// by up to 0.4 dB, and the high boost as x + mix * bandpass. With g the integrator gain:
+//   [0..4]  LF boost SVF: 2a, g a, 2g, gain - 1, k (sqrt(gain) - 1) + g (gain - 1), a = 1 / (1 + g (g + k))
+//   [5..7]  LF atten one-pole: 2g / (1 + g), DC gain, (1 - DC gain) / (1 + g)
+//   [8..10] HF boost: a1, a2 of the peak's denominator, gain of the bandpass (1 - 1/z^2)
+//   [11,12] HF atten one-pole: 2g / (1 + g), (HF gain - 1) / (1 + g)
+//   [13]    amplifier pre-scale for int32-scaled samples (0 = off)
+// Identity sections get exactly zero mixes, so the DSP skips them.
+void FxMath::fxCalcPultecChannelCoefficients(float data[], float samplerate, float lfFreq, float lfBoostDb, float lfAttenDb, float hfBoostFreq, float hfBoostDb, float bandwidth, float hfAttenFreq, float hfAttenDb, bool eqIn, bool tube, float driveDb) {
+  const double pi = 3.14159265358979323846;
+  double fs = samplerate;
+  if (!eqIn) {
+    lfBoostDb = lfAttenDb = hfBoostDb = hfAttenDb = 0.0f;
+  }
+  double fMax = 0.45 * fs;
+
+  // LF boost: second-order bilinear shelf (Q 0.707, no prewarping), poles at w / sqrt(r)
+  {
+    double r = pow(10.0, lfBoostDb / 40.0), k = sqrt(2.0);
+    double g = pi * lfFreq / (sqrt(r) * fs), a = 1.0 / (1.0 + g * (g + k));
+    data[0] = (float)(2.0 * a);
+    data[1] = (float)(g * a);
+    data[2] = (float)(2.0 * g);
+    data[3] = (float)(r * r - 1.0);
+    data[4] = (float)(k * (r - 1.0) + g * (r * r - 1.0));
+  }
+  // LF atten: first-order shelf, pole at wl sqrt(att)
+  {
+    double att = pow(10.0, lfAttenDb / 20.0), g = pi * lfFreq * sqrt(2.0 * att) / fs;
+    data[5] = (float)(2.0 * g / (1.0 + g));
+    data[6] = (float)(1.0 / att);
+    data[7] = (float)((1.0 - 1.0 / att) / (1.0 + g));
+  }
+  // HF boost: resonant peak, prewarped to f0
+  {
+    double f0 = fmin(hfBoostFreq, fMax), k = pow(10.0, hfBoostDb / 20.0);
+    double q = 2.0 * pow(0.25, fmin(fmax(bandwidth, 0.0), 1.0));
+    double w0 = 2.0 * pi * f0, c = w0 / tan(w0 / (2.0 * fs)), a0 = c * c + w0 / q * c + w0 * w0;
+    data[8] = (float)(2.0 * (w0 * w0 - c * c) / a0);
+    data[9] = (float)((c * c - w0 / q * c + w0 * w0) / a0);
+    data[10] = (float)((k - 1.0) * w0 / q * c / a0);
+  }
+  // HF atten: first-order shelf, prewarped pole at wh / sqrt(att)
+  {
+    double att = pow(10.0, hfAttenDb / 20.0), g = tan(pi * fmin(hfAttenFreq, fMax) / fs) / sqrt(att);
+    data[11] = (float)(2.0 * g / (1.0 + g));
+    data[12] = (float)((1.0 / att - 1.0) / (1.0 + g));
+  }
+  data[13] = tube ? (float)(sqrt(12.0 * 0.0015) * pow(10.0, 11.0 / 20.0) * pow(10.0, driveDb / 20.0) / 2147483648.0) : 0.0f;
+}
+
+// response of the channel kernel's structure, evaluated in double
+static double PultecChannelGainDb(const float c[], double f, double fs) {
+  using C = std::complex<double>;
+  C z = std::polar(1.0, 2.0 * 3.14159265358979323846 * f / fs);
+  // LF SVF: state (z1/2, z2), band = A1 z1 + A2 (x - z2), z1 <- band - z1, z2 <- z2 + G2 band
+  double a = c[0] - 1, b = -c[1], cc = c[2] * c[0], d = 1 - c[2] * c[1];
+  C det = (z - a) * (z - d) - b * cc;
+  C s0 = ((z - d) * double(c[1]) + b * double(c[2] * c[1])) / det, s1 = (cc * double(c[1]) + (z - a) * double(c[2] * c[1])) / det;
+  C h = (1.0 + double(c[4]) * c[1]) + double(c[4]) * c[0] * s0 + (double(c[3]) - double(c[4]) * c[1]) * s1;
+  h *= double(c[6]) + double(c[7]) - double(c[7]) * c[5] / (z - (1.0 - c[5]));
+  h *= 1.0 + double(c[10]) * (1.0 - 1.0 / (z * z)) / (1.0 + double(c[8]) / z + double(c[9]) / (z * z));
+  h *= 1.0 + double(c[12]) * (z - 1.0) / (z - 1.0 + double(c[11]));
+  return 20.0 * log10(std::abs(h));
+}
+
+TEST_CASE("Program EQ curves follow the EQP-1A specification")
+{
+  float ch[FxMath::CHANNEL_EQP1A_COEFFS];
+  for (double fs : {44100.0, 48000.0, 96000.0})
+  {
+    FxMath::fxCalcPultecChannelCoefficients(ch, fs, 60, 0, 0, 10000, 0, 0.5f, 10000, 0, true, false, 0);
+    for (double f = 20; f < 20000; f *= 1.1)
+      CHECK(std::fabs(PultecChannelGainDb(ch, f, fs)) < 1e-4);
+
+    // simultaneous low boost and attenuate: bump below, dip above the selected frequency
+    FxMath::fxCalcPultecChannelCoefficients(ch, fs, 60, 10, 8, 10000, 0, 0.5f, 10000, 0, true, false, 0);
+    CHECK(PultecChannelGainDb(ch, 20, fs) > 1.5);
+    CHECK(PultecChannelGainDb(ch, 120, fs) < -1.5);
+
+    // full shelf gains, half gain at the selected frequency, HF peak stays at 16 kHz
+    FxMath::fxCalcPultecChannelCoefficients(ch, fs, 20, 13.5f, 0, 16000, 18, 0, 20000, 0, true, false, 0);
+    CHECK(std::fabs(PultecChannelGainDb(ch, 0.5, fs) - (13.5)) < 0.01);
+    CHECK(std::fabs(PultecChannelGainDb(ch, 20, fs) - (6.75)) < 0.01);
+    CHECK(std::fabs(PultecChannelGainDb(ch, 16000, fs) - (18.0)) < 0.01);
+    FxMath::fxCalcPultecChannelCoefficients(ch, fs, 20, 0, 17.5f, 3000, 0, 0.5f, 5000, 16, true, false, 0);
+    CHECK(std::fabs(PultecChannelGainDb(ch, 0.5, fs) - (-17.5)) < 0.01);
+    CHECK(std::fabs(PultecChannelGainDb(ch, 5000, fs) - (-8.0)) < 0.01);
+    CHECK(PultecChannelGainDb(ch, 1000, fs) > -1.0);
+  }
+
+  // EQ out: exact identity sections, which the DSP skips; the amplifier stays in
+  FxMath::fxCalcPultecChannelCoefficients(ch, 48000, 100, 13.5f, 17.5f, 16000, 18, 0, 5000, 16, false, true, 0);
+  CHECK(ch[3] == 0.0f);
+  CHECK(ch[4] == 0.0f);
+  CHECK(ch[6] == 1.0f);
+  CHECK(ch[7] == 0.0f);
+  CHECK(ch[10] == 0.0f);
+  CHECK(ch[12] == 0.0f);
+  CHECK(ch[13] > 0.0f);
 }
 
 }

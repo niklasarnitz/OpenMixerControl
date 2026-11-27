@@ -118,6 +118,7 @@ namespace OMC
             bool GetBool(MP_ID mp, uint index = 0);
             String GetString(MP_ID mp, uint index = 0);
             uint GetPercent(MP_ID mp, uint index = 0);
+            float GetEffectiveEq1084MidGain(uint channel);
             bool GetBlink(MP_ID mp);
             void Set(MP_ID mp, float value, uint index = 0);    
             void Set(MP_ID mp, String value_string, uint index = 0
