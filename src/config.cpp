@@ -823,6 +823,27 @@ namespace OMC
         ->DefMinMaxStandard_Float(GATE_RELEASE_MIN, GATE_RELEASE_MAX, 250.0f, 0)
         ->DefOSC("ch_gate_release");
 
+        DefParameter(CHANNEL_GATE_MODE, cat, "Mode", MAX_VCHANNELS)
+        ->DefUOM(MP_UOM::GATE_MODE)
+        ->DefMinMaxStandard_Uint(0, 1, 0)
+        ->DefOSC("ch_gate_mode");
+
+        DefParameter(CHANNEL_PSE_DEPTH, cat, "Depth", MAX_VCHANNELS)
+        ->DefUOM(MP_UOM::DB)
+        ->DefMinMaxStandard_Float(PSE_DEPTH_MIN, PSE_DEPTH_MAX, -10.0f, 0)
+        ->DefOSC("ch_pse_depth");
+
+        DefParameter(CHANNEL_PSE_TIMECONSTANT, cat, "Time", MAX_VCHANNELS)
+        ->DefUOM(MP_UOM::PSE_TIMECONSTANT)
+        ->DefMinMaxStandard_Uint(0, 5, 2)
+        ->DefOSC("ch_pse_time");
+
+        DefParameter(CHANNEL_PSE_PEAK, cat, "Peak", MAX_VCHANNELS)
+        ->DefStandard_Bool(false)
+        ->DefOSC("ch_pse_peak");
+
+        GetParameter(CHANNEL_PSE_TIMECONSTANT)->DefPsePeak(GetParameter(CHANNEL_PSE_PEAK));
+
         // dynamics
         cat = MP_CAT::CHANNEL_DYNAMICS;
 

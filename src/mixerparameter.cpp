@@ -75,6 +75,8 @@ namespace OMC
             case CARD_NUMBER_OF_CHANNELS:
             case CARD_SDCARD_STATE:
             case CARD_AUDIO_SOURCE:
+            case GATE_MODE:
+            case PSE_TIMECONSTANT:
                 return GetUnitOfMeasurement(false, index, isResetLabel);
             case ZERO_BASED_INDEX__START_BY_ONE:
                 return String(value_float + 1, 0);
@@ -391,6 +393,19 @@ String Mixerparameter::GetUnitOfMeasurement(bool spaceInFront, uint index, bool 
                         break;
                 }
                 break;
+            case GATE_MODE:
+                result += ((uint) (isResetLabel ? value_standard : value[index])) == 1 ? "PSE" : "Gate";
+                break;
+            case PSE_TIMECONSTANT:
+            {
+                uint timeConstant = (uint) (isResetLabel ? value_standard : value[index]);
+                result += (char)('A' + timeConstant);
+                // peak F (30 s) runs limited to PSE_TIME_MAX_S, see DSP1::SendGate
+                if (timeConstant == 5 && !isResetLabel && pse_peak != nullptr && pse_peak->GetBool(index)) {
+                    result += String(" (") + String((int)PSE_TIME_MAX_S) + String(" s)");
+                }
+                break;
+            }
             case CHANNEL_LCD_MODE:
                 switch((uint) (isResetLabel ? value_standard : value[index]))
                 {

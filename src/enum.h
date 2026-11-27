@@ -139,6 +139,8 @@ enum class MP_UOM {
     BANKING_EQ1084,
     BANKING_EQP1A,
     COMP_MODEL, // COMPRESSOR_MODEL names
+    GATE_MODE,
+    PSE_TIMECONSTANT,
 };
 
 // compressor model ID per channel, also sent to the DSP
@@ -564,8 +566,14 @@ enum class MP_ID {
     CHANNEL_DYNAMICS_MODEL = 338, // COMPRESSOR_MODEL
     CHANNEL_DYNAMICS_160_GR = 339,
 
+    // Gate type and primary source expander
+    CHANNEL_GATE_MODE = 340,
+    CHANNEL_PSE_DEPTH = 341,
+    CHANNEL_PSE_TIMECONSTANT = 342,
+    CHANNEL_PSE_PEAK = 343,
+
     // Next free Number
-    __ELEMENT_COUNTER_DO_NOT_MOVE = 340
+    __ELEMENT_COUNTER_DO_NOT_MOVE = 344
 
 
     // !!!!!!!!!!!!!!!!!!!!  Danger Zone  !!!!!!!!!!!!!!!!!!

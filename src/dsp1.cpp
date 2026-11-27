@@ -366,9 +366,38 @@ void DSP1::SendGate(uint chanIndex)
     // we are using -2.19722 with an additional factor of 1000.0f converts ms -> seconds)
     values[4] = 1.0f - exp(-2197.22457734f/(samplerate * config->GetFloat(CHANNEL_GATE_RELEASE, chanIndex)));
 
-    values[5] = config->GetBool(CHANNEL_GATE_ENABLE, chanIndex) ? 1.0f : 0.0f;
+    // gate and primary source expander share one DSP gate slot per channel:
+    // both packets overwrite the same settings, so only the selected mode is sent
+    bool enable = config->GetBool(CHANNEL_GATE_ENABLE, chanIndex);
+    if (config->GetUint(CHANNEL_GATE_MODE, chanIndex) != 1) {
+        values[5] = enable ? 1.0f : 0.0f;
+        spi->QueueDspData(0, 'g', chanIndex, DSP_GATE_TYPE_STOCK, 6, &values[0]);
+        return;
+    }
 
-    spi->QueueDspData(0, 'g', chanIndex, 0, 6, &values[0]);
+    // Primary source expander, time constants per the published 5045 specifications.
+    // Gain attack/release run per sample like the gate, the detector decays once per block.
+    static const float pseRmsSeconds[6] = {0.05f, 0.1f, 0.2f, 0.75f, 1.5f, 3.0f}; // attack and release
+    static const float psePeakReleaseSeconds[6] = {0.02f, 0.2f, 1.0f, 2.0f, 5.0f, 30.0f};
+    const float psePeakAttackSeconds = 0.02f;
+
+    uint timeConstant = min(config->GetUint(CHANNEL_PSE_TIMECONSTANT, chanIndex), 5u); // scene files are not clamped
+    bool peak = config->GetBool(CHANNEL_PSE_PEAK, chanIndex);
+    float attack = peak ? psePeakAttackSeconds : pseRmsSeconds[timeConstant];
+    // peak F (30 s) is limited, see PSE_TIME_MAX_S
+    float release = min(peak ? psePeakReleaseSeconds[timeConstant] : pseRmsSeconds[timeConstant], PSE_TIME_MAX_S);
+    float pseValues[7];
+
+    pseValues[0] = values[0]; // linear threshold, the DSP squares it
+    pseValues[1] = pow(10.0f, config->GetFloat(CHANNEL_PSE_DEPTH, chanIndex)/20.0f); // floor gain
+    // 1 - exp(-T/tau) in double: in float the tiny per-sample coefficients lose precision
+    pseValues[2] = (float)-expm1(-1.0 / ((double)samplerate * (double)attack));
+    pseValues[3] = 0.0f; // no hold
+    pseValues[4] = (float)-expm1(-1.0 / ((double)samplerate * (double)release));
+    pseValues[5] = enable ? (peak ? 2.0f : 1.0f) : 0.0f; // detector: 0 off, 1 RMS, 2 peak
+    pseValues[6] = exp(-1000.0f / (bufferrate * PSE_DETECTOR_MS)); // detector decay per block
+
+    spi->QueueDspData(0, 'g', chanIndex, DSP_GATE_TYPE_PSE, 7, &pseValues[0]);
 }
 
 void DSP1::SendLowcut(uint8_t chan)

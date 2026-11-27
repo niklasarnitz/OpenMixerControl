@@ -84,6 +84,38 @@ typedef struct _objects_t {
     lv_obj_t *config_dca_group_8;
     lv_obj_t *config_phantom_button;
     lv_obj_t *current_channel_gate;
+    lv_obj_t *pse;
+    lv_obj_t *pse__face;
+    lv_obj_t *pse__deco_1;
+    lv_obj_t *pse__deco_2;
+    lv_obj_t *pse__deco_3;
+    lv_obj_t *pse__deco_4;
+    lv_obj_t *pse__deco_5;
+    lv_obj_t *pse__deco_6;
+    lv_obj_t *pse__deco_9;
+    lv_obj_t *pse__time_scale;
+    lv_obj_t *pse__deco_8;
+    lv_obj_t *pse__deco_7;
+    lv_obj_t *pse__time_needle;
+    lv_obj_t *pse__time_value;
+    lv_obj_t *pse__deco_12;
+    lv_obj_t *pse__threshold_scale;
+    lv_obj_t *pse__deco_11;
+    lv_obj_t *pse__deco_10;
+    lv_obj_t *pse__threshold_needle;
+    lv_obj_t *pse__threshold_value;
+    lv_obj_t *pse__deco_15;
+    lv_obj_t *pse__depth_scale;
+    lv_obj_t *pse__deco_14;
+    lv_obj_t *pse__deco_13;
+    lv_obj_t *pse__depth_needle;
+    lv_obj_t *pse__depth_value;
+    lv_obj_t *pse__active_lamp;
+    lv_obj_t *pse__deco_16;
+    lv_obj_t *pse__engage_lamp;
+    lv_obj_t *pse__deco_17;
+    lv_obj_t *pse__peak_lamp;
+    lv_obj_t *pse__deco_18;
     lv_obj_t *current_channel_comp;
     lv_obj_t *dbx160;
     lv_obj_t *dbx160__face;
@@ -1750,6 +1782,9 @@ void tick_user_widget_widget_fx(int startWidgetIndex);
 
 void create_user_widget_routing_element(lv_obj_t *parent_obj, int startWidgetIndex);
 void tick_user_widget_routing_element(int startWidgetIndex);
+
+void create_user_widget_pse_face(lv_obj_t *parent_obj, int startWidgetIndex);
+void tick_user_widget_pse_face(int startWidgetIndex);
 
 void create_user_widget_dbx160_face(lv_obj_t *parent_obj, int startWidgetIndex, user_widget_dbx160_face_state_t *state);
 void tick_user_widget_dbx160_face(int startWidgetIndex, user_widget_dbx160_face_state_t *state);

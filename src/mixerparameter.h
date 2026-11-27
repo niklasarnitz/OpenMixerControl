@@ -36,6 +36,8 @@ class Mixerparameter
 
         bool _no_config = false;  // include Mixerparameter NOT in saved config
 
+        Mixerparameter* pse_peak = nullptr; // PSE_TIMECONSTANT only: per-channel RMS/peak switch for the label
+
         MP_UOM unitOfMeasurement = MP_UOM::NONE;
 
         float value_min;
@@ -315,6 +317,14 @@ class Mixerparameter
         /// @brief Hide the reset on display encoders if this Mixerparameter is bound.
         Mixerparameter* DefHideEncoderReset() {
             hide_encoder_reset = true;
+
+            return this;
+        }
+
+        /// @brief PSE_TIMECONSTANT only: the peak switch whose channel value selects the label.
+        Mixerparameter* DefPsePeak(Mixerparameter* peak)
+        {
+            pse_peak = peak;
 
             return this;
         }

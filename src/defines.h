@@ -74,6 +74,17 @@ typedef unsigned int uint;
 #define GATE_RELEASE_MIN                5.0f // ms
 #define GATE_RELEASE_MAX             4000.0f // ms
 
+// Gate type ID, sent as SPI index of class 'g' (matches OPENAUDIODSP_GATE_TYPE_* and CHANNEL_GATE_MODE)
+#define DSP_GATE_TYPE_STOCK             0
+#define DSP_GATE_TYPE_PSE               1
+
+// Primary source expander, shares enable and threshold with the gate
+#define PSE_DEPTH_MIN                 -20.0f // dB
+#define PSE_DEPTH_MAX                   0.0f // dB
+#define PSE_DETECTOR_MS                20.0f // RMS averaging and peak decay of the sidechain
+#define PSE_TIME_MAX_S                  5.0f // longest PSE time constant (limits peak F, 30 s): the per-sample
+                                             // float envelope stays within ~0.2 dB of depth; longer times stall above it
+
 #define DYNAMICS_THRESHOLD_MIN            -60.0f // dB
 #define DYNAMICS_THRESHOLD_MAX              0.0f // dB
 #define DYNAMICS_RATIO_MIN             1.1f //
