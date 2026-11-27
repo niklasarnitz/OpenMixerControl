@@ -36,8 +36,9 @@ namespace OMC
             void ObserveSurface(SurfaceElement* element, const char* action, float value);
             void ExpireObservers();
 
-            // a client has sent a valid OSC message, meters go to the last one
-            bool hasClients = false;
+            // clients that asked for meters with /subscribe/meters/1 and the levels they got last
+            std::map<in_addr_t, std::chrono::steady_clock::time_point> meterObservers;
+            std::map<uint, std::vector<float>> sentMeters;
 
         public:
             int UdpHandle;
