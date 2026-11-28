@@ -30,8 +30,11 @@ constexpr std::array overdrive{2.5f, -0.25f, 0.125f, 0.0625f, 0.75f, 0.5f};
 constexpr std::array overdriveWords{0x40200000u, 0xbe800000u, 0x3e000000u, 0x3d800000u, 0x3f400000u, 0x3f000000u};
 unsigned updateOp, randomReads, faultOnTransfer = 1;
 bool loseFabricAfterIdentify;
-enum BadReply { Good, Empty, Short, Early, Magic, Abi, Core, Nonce, RequestCrc, ReplyCrc, Status, Flags, Reserved, Replay };
+enum BadReply { Good, Empty, Short, Early, Magic, Abi, Core, Nonce, RequestCrc, ReplyCrc, Status, Flags, Reserved, Replay,
+                StatusCrc, SportFault, Legacy };
 BadReply bad;
+uint32_t coreClock = 400000000;
+OMC::WingDspIdentity identity;
 
 void Put(uint8_t* p, uint32_t v)
 {
@@ -54,7 +57,7 @@ void Try(unsigned core, bool success, int count, int opens, bool allowControl = 
     randomReads = 0;
     try {
         if (updateOp) OMC::SetWingOverdrive(values);
-        else OMC::IdentifyWingDsp(core);
+        else identity = OMC::IdentifyWingDsp(core);
         assert(success);
     } catch (const std::runtime_error& e) {
         if (success || transfers != count || dspOpens != opens) std::cerr << e.what() << '\n';
@@ -141,9 +144,13 @@ extern "C" int __wrap_ioctl(int fd, unsigned long op, ...)
         const auto replyFault = transfers == int(faultOnTransfer) ? bad : Good;
         const auto& xfer = *va_arg(args, spi_ioc_transfer*);
         va_end(args);
-        assert(xfer.len == 73 && xfer.bits_per_word == 8 && xfer.cs_change == 0 && xfer.speed_hz == 10000);
+        // Identify clocks the 44-byte v1.1 reply, updates the 24-byte v1.0 ACK.
+        assert(xfer.len == (transfers == 1 ? 93u : 73u) && xfer.bits_per_word == 8 && xfer.cs_change == 0 &&
+               xfer.speed_hz == 10000);
         const auto* tx = reinterpret_cast<const uint8_t*>(xfer.tx_buf);
         auto* rx = reinterpret_cast<uint8_t*>(xfer.rx_buf);
+        std::memset(rx, 0xff, xfer.len); // the DSP sends 0xff whenever it has no reply byte
+        for (size_t i = 73; i < xfer.len; ++i) assert(tx[i] == 0);
         std::array<uint8_t, 73> expected{};
         expected[0] = expected[12] = expectedCore;
         std::memcpy(expected.data() + 1, "WDSP", 4);
@@ -172,10 +179,17 @@ extern "C" int __wrap_ioctl(int fd, unsigned long op, ...)
             Put(reply + 8, challenge ^ (replyFault == Nonce));
             reply[12] = replyFault == Core ? 3 : expectedCore;
             reply[13] = replyFault == Status ? 2 : 0;
-            reply[14] = replyFault == Flags ? 3 : 1;
+            reply[14] = replyFault == Flags ? 3 : replyFault == SportFault ? 2 : 1;
             reply[15] = replyFault == Reserved ? 1 : 0;
             Put(reply + 16, crc ^ (replyFault == RequestCrc));
             Put(reply + 20, crc32(0, reply, 20) ^ (replyFault == ReplyCrc));
+            if (transfers == 1 && replyFault != Legacy) {
+                Put(reply + 24, 1); // ABI minor
+                Put(reply + 28, replyFault == SportFault ? 3 : 0);
+                Put(reply + 32, 1234);
+                Put(reply + 36, coreClock);
+                Put(reply + 40, crc32(0, reply, 40) ^ (replyFault == StatusCrc));
+            }
             if (transfers == 1) std::memcpy(identifyReply.data(), reply, identifyReply.size());
             if (replyFault == Replay) std::memcpy(reply, identifyReply.data(), identifyReply.size());
         }
@@ -223,7 +237,35 @@ int main(int argc, char** argv)
     Try(4, false, 0, 1);
     noEntropy = false;
     for (auto core : {1u, 2u, 4u}) Try(core, true, 1, 1);
+    assert(identity.extended && identity.fault == 0 && identity.blocks == 1234 && identity.coreClockHz == coreClock);
+    OMC::RequireWingDspAudioClock(identity);
     for (bad = Empty; bad <= Reserved; bad = static_cast<BadReply>(bad + 1)) Try(4, false, 1, 1);
+    bad = StatusCrc;
+    Try(4, false, 1, 1);
+    bad = SportFault;
+    Try(4, false, 1, 1);
+    bad = Legacy; // v1.0 firmware: Identify still succeeds, but reports no CCLK
+    Try(4, true, 1, 1);
+    assert(!identity.extended);
+    const auto refused = [](const char* reason) {
+        try {
+            OMC::RequireWingDspAudioClock(identity);
+        } catch (const std::runtime_error& e) {
+            if (std::strstr(e.what(), reason)) return;
+        }
+        std::abort();
+    };
+    refused("v1.0");
+    bad = Good;
+    for (auto [clock, reason] : {std::pair{0u, "not measured"}, {393215999u, "below"}}) {
+        coreClock = clock;
+        Try(4, true, 1, 1);
+        refused(reason);
+    }
+    coreClock = 393216000;
+    Try(4, true, 1, 1);
+    OMC::RequireWingDspAudioClock(identity);
+    bad = Good;
 
     updateOp = 2;
     bad = Good;
@@ -252,5 +294,5 @@ int main(int argc, char** argv)
     Try(4, false, 2, 1, true, nullptr);
     bad = Good;
     Try(4, true, 2, 1, true, nullptr);
-    std::cout << "PASS: W2 boot gates, WDSP v1 Identify, DSP4 atomic Set and Bypass, and rejected ACKs\n";
+    std::cout << "PASS: W2 boot gates, WDSP v1.1 Identify and CCLK gate, DSP4 atomic Set and Bypass, and rejected ACKs\n";
 }

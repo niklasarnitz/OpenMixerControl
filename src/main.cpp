@@ -483,8 +483,16 @@ namespace OMC
 #ifdef TARGET_WING
 		if (*wingIdentify) {
 			try {
-				IdentifyWingDsp(wingDsp);
+				const auto identity = IdentifyWingDsp(wingDsp);
 				printf("WING DSP%u: WDSP v1 verified; SPORT armed, not audio valid\n", wingDsp);
+				if (identity.extended) {
+					printf("WING DSP%u: %u blocks, CCLK %.3f MHz\n", wingDsp, identity.blocks, identity.coreClockHz / 1e6);
+				}
+				try {
+					RequireWingDspAudioClock(identity);
+				} catch (const std::exception& e) {
+					printf("WING DSP%u: audio enable refused: %s\n", wingDsp, e.what());
+				}
 				return 0;
 			} catch (const std::exception& e) {
 				fprintf(stderr, "WING DSP%u: %s\n", wingDsp, e.what());

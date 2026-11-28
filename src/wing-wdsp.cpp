@@ -186,7 +186,7 @@ class Session
 public:
     explicit Session(unsigned target) : core(target) {}
 
-    void Run(Operation op = Operation::Identify, const std::array<float, 6>* values = nullptr) const
+    WingDspIdentity Run(Operation op = Operation::Identify, const std::array<float, 6>* values = nullptr) const
     {
         Require(core >= 1 && core <= 4 && (coreMask & (1u << (core - 1))), "unsupported WING DSP core");
         CheckDirectory("/run");
@@ -222,22 +222,25 @@ public:
         Require(dsp.value >= 0 && ioctl(dsp.value, SPI_IOC_WR_MODE32, &mode) == 0 &&
                 ioctl(dsp.value, SPI_IOC_WR_BITS_PER_WORD, &bits) == 0 &&
                 ioctl(dsp.value, SPI_IOC_WR_MAX_SPEED_HZ, &speed) == 0, "cannot configure WING SS0");
-        Command(dsp.value, Operation::Identify, nullptr);
+        const auto identity = Command(dsp.value, Operation::Identify, nullptr);
         if (op != Operation::Identify) {
             // Identify can succeed just before the FPGA goes offline; recheck before writing.
             CheckFabric(control.value, receipt);
             Command(dsp.value, op, values);
         }
+        return identity;
     }
 
 private:
-    void Command(int fd, Operation op, const std::array<float, 6>* values) const
+    WingDspIdentity Command(int fd, Operation op, const std::array<float, 6>* values) const
     {
         uint32_t nonce;
         Require(getrandom(&nonce, sizeof nonce, GRND_NONBLOCK) == sizeof nonce, "cannot obtain WDSP nonce");
 
-        constexpr size_t firstReply = 1 + 40, replyBytes = 24, pollBytes = 8;
-        std::array<uint8_t, firstReply + pollBytes + replyBytes> tx{}, rx{};
+        // Identify replies are 44 bytes since ABI minor 1; v1.0 firmware sends 24 and then 0xff.
+        constexpr size_t firstReply = 1 + 40, replyBytes = 24, identifyBytes = 44, pollBytes = 8;
+        const size_t length = firstReply + pollBytes + (op == Operation::Identify ? identifyBytes : replyBytes);
+        std::array<uint8_t, firstReply + pollBytes + identifyBytes> tx{}, rx{};
         tx[0] = core; // FPGA consumes selector; WDSP starts at the next byte.
         auto* frame = tx.data() + 1;
         PutWord(frame, 0x57445350); // WDSP
@@ -258,19 +261,29 @@ private:
         spi_ioc_transfer transfer{};
         transfer.tx_buf = reinterpret_cast<uintptr_t>(tx.data());
         transfer.rx_buf = reinterpret_cast<uintptr_t>(rx.data());
-        transfer.len = tx.size();
+        transfer.len = length;
         transfer.speed_hz = dspSpeed;
         transfer.bits_per_word = 8;
-        Require(ioctl(fd, SPI_IOC_MESSAGE(1), &transfer) == int(tx.size()),
+        Require(ioctl(fd, SPI_IOC_MESSAGE(1), &transfer) == int(length),
                 op == Operation::Identify ? "failed or short WING SS0 Identify" :
                 "failed or short WING SS0 update: outcome unknown, no retry");
 
-        for (size_t i = firstReply; i + replyBytes <= rx.size(); ++i) {
+        for (size_t i = firstReply; i + replyBytes <= length; ++i) {
             const auto* reply = rx.data() + i;
             if (ReadWord(reply) != 0x57445352 || ReadWord(reply + 4) != 1 || ReadWord(reply + 8) != nonce ||
                 reply[12] != core || ReadWord(reply + 16) != crc || ReadWord(reply + 20) != Crc32(reply, 20)) continue;
+            WingDspIdentity identity;
+            if (op == Operation::Identify && i + identifyBytes <= length && ReadWord(reply + 24) != 0xffffffff) {
+                Require(ReadWord(reply + 24) >= 1 && ReadWord(reply + 40) == Crc32(reply, 40),
+                        "corrupt WDSP v1.1 Identify status");
+                identity = {true, ReadWord(reply + 28), ReadWord(reply + 32), ReadWord(reply + 36)};
+            }
+            if (identity.extended && reply[14] == 2) {
+                constexpr const char* causes[] = {"unknown", "deadline", "SPORT overflow/underflow", "lane stall"};
+                throw std::runtime_error(std::string("WDSP SPORT fault: ") + causes[identity.fault < 4 ? identity.fault : 0]);
+            }
             Require(reply[13] == 0 && reply[14] == 1 && reply[15] == 0, "WDSP rejected command or SPORT not armed");
-            return;
+            return identity;
         }
         throw std::runtime_error(op == Operation::Identify ? "no matching WDSP v1 Identify reply" :
                                  "no matching WDSP v1 update ACK: outcome unknown, no retry");
@@ -281,9 +294,17 @@ private:
 
 } // namespace
 
-void IdentifyWingDsp(unsigned core)
+WingDspIdentity IdentifyWingDsp(unsigned core)
 {
-    Session(core).Run();
+    return Session(core).Run();
+}
+
+void RequireWingDspAudioClock(const WingDspIdentity& identity)
+{
+    constexpr uint32_t minimumHz = 393216000; // 16 x 24.576 MHz BCLK, ADSP-2148x slave TX
+    Require(identity.extended, "WDSP v1.0 firmware does not report CCLK");
+    Require(identity.coreClockHz != 0, "CCLK not measured: FS has not run for one second");
+    Require(identity.coreClockHz >= minimumHz, "CCLK below the 393.216 MHz slave TX minimum");
 }
 
 void SetWingOverdrive(const std::array<float, 6>* values)

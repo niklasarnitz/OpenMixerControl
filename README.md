@@ -37,6 +37,12 @@ and FS and return-valid both off. A successful Identify means SPORT is armed,
 not that audio is valid. DSP3, X32 probing, boot/reset and audio enable are
 outside this command's scope.
 
+WDSP v1.1 firmware also reports its block count and the CCLK it measured over
+one second of FS; a faulted core reports why (deadline, SPORT overflow or lane
+stall). The command prints both and refuses audio enable unless the measured
+CCLK is at least 393.216 MHz, the minimum for slave TX at 24.576 MHz BCLK.
+With FS off, as this command requires, the clock reads as not measured.
+
 With the matching DSP4 Overdrive firmware, `omc --wing-overdrive-set 2 0.25
 -0.1 0.03 0.8 0.6` sends one atomic update to stereo pair 0 after a fresh
 Identify. Arguments are WDSP units, not dB/Hz: linear pregain [1, 16], Q
