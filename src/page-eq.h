@@ -6,6 +6,7 @@
 
 #include "fx1084.h"
 #include "page.h"
+#include "pultec-panel.h"
 
 using namespace std;
 
@@ -44,11 +45,7 @@ class PageEq: public Page {
             lv_chart_set_series_color(objects.current_channel_eq, chartSeriesEQPhase, lv_color_hex(0x008000));
             //chart-shadow: 0x7e4000
 
-            eqp1aSummary = lv_label_create(objects.eqtab);
-            lv_obj_set_style_text_align(eqp1aSummary, LV_TEXT_ALIGN_CENTER, 0);
-            lv_obj_set_style_text_line_space(eqp1aSummary, 12, 0);
-            lv_obj_align(eqp1aSummary, LV_ALIGN_TOP_MID, 0, 48);
-            lv_obj_add_flag(eqp1aSummary, LV_OBJ_FLAG_HIDDEN);
+            eqp1aPanel.Bind();
         }
 
         void OnShow() override
@@ -91,7 +88,7 @@ class PageEq: public Page {
             {CHANNEL_EQP1A_HF_BOOST_FREQ, CHANNEL_EQP1A_HF_BOOST, CHANNEL_EQP1A_HF_BANDWIDTH, CHANNEL_EQP1A_DRIVE},
             {CHANNEL_EQP1A_HF_ATTEN_FREQ, CHANNEL_EQP1A_HF_ATTEN, NONE, NONE}
         };
-        lv_obj_t* eqp1aSummary;
+        PultecPanel eqp1aPanel;
 
         EQ_MODEL Model(uint channel)
         {
@@ -205,6 +202,41 @@ class PageEq: public Page {
             showSwitch(CHANNEL_EQ1084_ANALOG, objects.eq1084__analog_title, objects.eq1084__analog_lamp, objects.eq1084__analog_value, "On", "Off");
         }
 
+        void DrawEqp1a(uint channel)
+        {
+            const uint bankIndex = config->GetUint(BANKING_EQP1A);
+            const auto& bank = eqp1aBanks[bankIndex];
+            auto inBank = [&](MP_ID id) { return std::find(std::begin(bank), std::end(bank), id) != std::end(bank); };
+            const struct {
+                PultecPanel::Control control;
+                MP_ID id;
+            } controls[] = {
+                {PultecPanel::LF_FREQ, CHANNEL_EQP1A_LF_FREQ},
+                {PultecPanel::LF_BOOST, CHANNEL_EQP1A_LF_BOOST},
+                {PultecPanel::LF_ATTEN, CHANNEL_EQP1A_LF_ATTEN},
+                {PultecPanel::HF_BOOST_FREQ, CHANNEL_EQP1A_HF_BOOST_FREQ},
+                {PultecPanel::HF_BOOST, CHANNEL_EQP1A_HF_BOOST},
+                {PultecPanel::HF_BANDWIDTH, CHANNEL_EQP1A_HF_BANDWIDTH},
+                {PultecPanel::HF_ATTEN_FREQ, CHANNEL_EQP1A_HF_ATTEN_FREQ},
+                {PultecPanel::HF_ATTEN, CHANNEL_EQP1A_HF_ATTEN},
+                {PultecPanel::DRIVE, CHANNEL_EQP1A_DRIVE},
+            };
+            for (const auto& control : controls)
+            {
+                auto* param = config->GetParameter(control.id);
+                const float min = param->GetMin();
+                const float max = param->GetMax();
+                const float value = config->GetFloat(control.id, channel);
+                const float position = std::isfinite(value) && max > min ? (value - min) / (max - min) : 0.0f;
+                eqp1aPanel.SetControl(control.control, position, false, param->GetFormatedValue(channel).c_str(), inBank(control.id));
+            }
+            const bool in = config->GetBool(CHANNEL_EQ_ENABLE, channel);
+            eqp1aPanel.SetControl(PultecPanel::EQ_IN, 0, in, in ? "IN" : "OUT", false);
+            const bool tube = config->GetBool(CHANNEL_EQP1A_TUBE, channel);
+            eqp1aPanel.SetControl(PultecPanel::TUBE, 0, tube, tube ? "ON" : "OFF", inBank(CHANNEL_EQP1A_TUBE));
+            eqp1aPanel.SetBank(bankIndex, std::size(eqp1aBanks));
+        }
+
         void DrawEq() {
 
             uint selectedChannelIndex = config->GetUint(SELECTED_CHANNEL);
@@ -212,18 +244,11 @@ class PageEq: public Page {
             bool show1084 = model == EQ_MODEL::EQ1084;
             bool showEqp1a = model == EQ_MODEL::EQP1A;
             lv_obj_set_flag(objects.eq1084, LV_OBJ_FLAG_HIDDEN, !show1084);
-            lv_obj_set_flag(eqp1aSummary, LV_OBJ_FLAG_HIDDEN, !showEqp1a);
+            lv_obj_set_flag(objects.eqp1a, LV_OBJ_FLAG_HIDDEN, !showEqp1a);
             lv_obj_set_flag(objects.current_channel_eq, LV_OBJ_FLAG_HIDDEN, show1084 || showEqp1a);
             if (showEqp1a)
             {
-                auto value = [&](MP_ID id) { return config->GetParameter(id)->GetFormatedValue(selectedChannelIndex); };
-                lv_label_set_text_fmt(eqp1aSummary,
-                    "EQP-1A PROGRAM EQ  /  %s\n\nLO   %s    Boost %s    Att %s\nHI   %s    Boost %s    Width %s\nHI ATT   %s    %s\n\nTube   %s     Drive   %s",
-                    config->GetBool(CHANNEL_EQ_ENABLE, selectedChannelIndex) ? "IN" : "OUT",
-                    value(CHANNEL_EQP1A_LF_FREQ).c_str(), value(CHANNEL_EQP1A_LF_BOOST).c_str(), value(CHANNEL_EQP1A_LF_ATTEN).c_str(),
-                    value(CHANNEL_EQP1A_HF_BOOST_FREQ).c_str(), value(CHANNEL_EQP1A_HF_BOOST).c_str(), value(CHANNEL_EQP1A_HF_BANDWIDTH).c_str(),
-                    value(CHANNEL_EQP1A_HF_ATTEN_FREQ).c_str(), value(CHANNEL_EQP1A_HF_ATTEN).c_str(),
-                    config->GetBool(CHANNEL_EQP1A_TUBE, selectedChannelIndex) ? "On" : "Off", value(CHANNEL_EQP1A_DRIVE).c_str());
+                DrawEqp1a(selectedChannelIndex);
                 return;
             }
             if (show1084)

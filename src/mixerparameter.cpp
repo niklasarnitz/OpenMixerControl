@@ -41,12 +41,16 @@ namespace OMC
             return "Mono";
         }
 
+        if (parameter_id == MP_ID::CHANNEL_EQP1A_TUBE) {
+            return value_float != 0 ? "On" : "Off";
+        }
+
         switch (unitOfMeasurement)
         {
             case EQ1084_SELECT:
                 return value_float == (float)EQ_MODEL::EQP1A ? "EQP-1A" : value_float != 0 ? "1084" : "PEQ";
             case BANKING_EQP1A:
-                return value_float == 0 ? "Lo / Tube" : value_float == 1 ? "Hi Boost / Drive" : "Hi Att";
+                return value_float == 0 ? "Lo / Tube" : value_float == 1 ? "Hi / Drive" : "Hi Att";
             case BANKING_EQ1084:
                 return value_float == 0 ? "LF / MF" : value_float == 1 ? "HF / Analog" : "HPF / LPF";
             case EQ1084_HP_FREQ:

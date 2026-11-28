@@ -9,13 +9,12 @@
 namespace OMC
 {
 
-// Live state of the program EQ faceplate. The faceplate itself (pultec_face
-// in the Effects tab) is designed in EEZ Studio; this only moves the pointers,
+// Live state of the EQP-1A faceplate on the EQ page. The faceplate itself (user
+// widget eqp1a_face) is designed in EEZ Studio; this only moves the pointers,
 // lights the lamps, writes the readouts and letters the controls the display
 // encoders currently reach in amber.
 class PultecPanel {
     public:
-        // Control index = position in the FX parameter list of FX_TYPE::PULTEC
         enum Control {
             LF_FREQ, LF_BOOST, LF_ATTEN, HF_BOOST_FREQ, HF_BOOST, HF_BANDWIDTH,
             HF_ATTEN_FREQ, HF_ATTEN, EQ_IN, TUBE, DRIVE, CONTROL_COUNT
@@ -23,35 +22,24 @@ class PultecPanel {
 
         void Bind()
         {
-            BindDial(LF_FREQ, objects.pultec_lo_freq_title, objects.pultec_lo_freq_scale, objects.pultec_lo_freq_needle, nullptr);
-            BindDial(LF_BOOST, objects.pultec_lo_boost_title, objects.pultec_lo_boost_scale, objects.pultec_lo_boost_needle, objects.pultec_lo_boost_value);
-            BindDial(LF_ATTEN, objects.pultec_lo_att_title, objects.pultec_lo_att_scale, objects.pultec_lo_att_needle, objects.pultec_lo_att_value);
-            BindDial(HF_BOOST_FREQ, objects.pultec_hi_freq_title, objects.pultec_hi_freq_scale, objects.pultec_hi_freq_needle, nullptr);
-            BindDial(HF_BOOST, objects.pultec_hi_boost_title, objects.pultec_hi_boost_scale, objects.pultec_hi_boost_needle, objects.pultec_hi_boost_value);
-            BindDial(HF_BANDWIDTH, objects.pultec_hi_width_title, objects.pultec_hi_width_scale, objects.pultec_hi_width_needle, nullptr);
-            BindDial(HF_ATTEN_FREQ, objects.pultec_hi_att_freq_title, objects.pultec_hi_att_freq_scale, objects.pultec_hi_att_freq_needle, nullptr);
-            BindDial(HF_ATTEN, objects.pultec_hi_att_title, objects.pultec_hi_att_scale, objects.pultec_hi_att_needle, objects.pultec_hi_att_value);
-            BindLamp(EQ_IN, objects.pultec_eq_in_title, objects.pultec_eq_in_lamp, objects.pultec_eq_in_value);
-            BindLamp(TUBE, objects.pultec_tube_title, objects.pultec_tube_lamp, objects.pultec_tube_value);
-            BindDial(DRIVE, objects.pultec_drive_title, objects.pultec_drive_scale, objects.pultec_drive_needle, nullptr);
+            BindDial(LF_FREQ, objects.eqp1a__lo_freq_title, objects.eqp1a__lo_freq_scale, objects.eqp1a__lo_freq_needle, nullptr);
+            BindDial(LF_BOOST, objects.eqp1a__lo_boost_title, objects.eqp1a__lo_boost_scale, objects.eqp1a__lo_boost_needle, objects.eqp1a__lo_boost_value);
+            BindDial(LF_ATTEN, objects.eqp1a__lo_att_title, objects.eqp1a__lo_att_scale, objects.eqp1a__lo_att_needle, objects.eqp1a__lo_att_value);
+            BindDial(HF_BOOST_FREQ, objects.eqp1a__hi_freq_title, objects.eqp1a__hi_freq_scale, objects.eqp1a__hi_freq_needle, nullptr);
+            BindDial(HF_BOOST, objects.eqp1a__hi_boost_title, objects.eqp1a__hi_boost_scale, objects.eqp1a__hi_boost_needle, objects.eqp1a__hi_boost_value);
+            BindDial(HF_BANDWIDTH, objects.eqp1a__hi_width_title, objects.eqp1a__hi_width_scale, objects.eqp1a__hi_width_needle, nullptr);
+            BindDial(HF_ATTEN_FREQ, objects.eqp1a__hi_att_freq_title, objects.eqp1a__hi_att_freq_scale, objects.eqp1a__hi_att_freq_needle, nullptr);
+            BindDial(HF_ATTEN, objects.eqp1a__hi_att_title, objects.eqp1a__hi_att_scale, objects.eqp1a__hi_att_needle, objects.eqp1a__hi_att_value);
+            BindLamp(EQ_IN, objects.eqp1a__eq_in_title, objects.eqp1a__eq_in_lamp, objects.eqp1a__eq_in_value);
+            BindLamp(TUBE, objects.eqp1a__tube_title, objects.eqp1a__tube_lamp, objects.eqp1a__tube_value);
+            BindDial(DRIVE, objects.eqp1a__drive_title, objects.eqp1a__drive_scale, objects.eqp1a__drive_needle, nullptr);
         }
 
-        void SetVisible(bool visible)
-        {
-            if (visible) {
-                lv_obj_remove_flag(objects.pultec_face, LV_OBJ_FLAG_HIDDEN);
-            } else {
-                lv_obj_add_flag(objects.pultec_face, LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-
-        void SetSlot(unsigned slot, unsigned bank, unsigned bankCount)
+        void SetBank(unsigned bank, unsigned bankCount)
         {
             char text[48];
-            snprintf(text, sizeof(text), "FX%u", slot + 1);
-            SetText(objects.pultec_slot, text);
-            snprintf(text, sizeof(text), "ENCODERS: BANK %u/%u\n" LV_SYMBOL_UP " " LV_SYMBOL_DOWN " TO CHANGE", bank + 1, bankCount);
-            SetText(objects.pultec_bank, text);
+            snprintf(text, sizeof(text), "ENCODERS: BANK %u/%u\nENCODER 6 TO CHANGE", bank + 1, bankCount);
+            SetText(objects.eqp1a__bank, text);
         }
 
         // position: 0..1 along the dial (switch positions for selectors), on: lamps,
@@ -60,7 +48,10 @@ class PultecPanel {
         {
             Part& part = parts[control];
             if (part.lamp != nullptr) {
-                lv_led_set_brightness(part.lamp, on ? LV_LED_BRIGHT_MAX : LAMP_OFF);
+                const uint8_t brightness = on ? LV_LED_BRIGHT_MAX : LAMP_OFF;
+                if (lv_led_get_brightness(part.lamp) != brightness) {
+                    lv_led_set_brightness(part.lamp, brightness);
+                }
             } else {
                 int32_t min = lv_scale_get_range_min_value(part.scale);
                 int32_t max = lv_scale_get_range_max_value(part.scale);
