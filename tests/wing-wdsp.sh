@@ -7,8 +7,9 @@ trap 'rm -rf "$scratch"' EXIT
 umask 077
 image=$(printf '%064d' 0)
 cat > "$scratch/manifest" <<EOF
-{"schema_version":2,"abi_version":131072,"magic":1464421959,"build_id":305419896,"feature_flags":15,
+{"schema_version":2,"abi_version":131072,"magic":1464421959,"build_id":305419896,"feature_flags":127,
 "target":"wing-compact-t55f484-fork","device":"T55F484","bitstream":{"file":"wing.bin","sha256":"$image"},
+"dsp_board_profile_sha256":"1849b434f1c5a974d67a49795cff04ec26caa582a1336396ae022934aab9ee6a",
 "transport":{"device":"/dev/spibone0","compatible":"openmixer,wing-spibone","chip_select":1,"mode":0,"max_hz":2000000},
 "dsp_runtime":{"device":"/dev/spidev1.0","chip_select":0,"abi":1}}
 EOF

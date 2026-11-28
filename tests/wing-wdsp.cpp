@@ -41,6 +41,23 @@ void Put(uint8_t* p, uint32_t v)
     for (int i = 3; i >= 0; --i, v >>= 8) p[i] = v & 255;
 }
 
+// Rewrites the shell's manifest with other capabilities or board profile; returns its SHA-256.
+std::string Manifest(const std::string& image, unsigned flags, const std::string& profile)
+{
+    {
+        std::ofstream out(dir + "/manifest");
+        out << R"({"schema_version":2,"abi_version":131072,"magic":1464421959,"build_id":305419896,"feature_flags":)"
+            << flags << R"(,"target":"wing-compact-t55f484-fork","device":"T55F484",)"
+            << R"("bitstream":{"file":"wing.bin","sha256":")" << image << R"("},"dsp_board_profile_sha256":")" << profile
+            << R"(","transport":{"device":"/dev/spibone0","compatible":"openmixer,wing-spibone","chip_select":1,)"
+            << R"("mode":0,"max_hz":2000000},"dsp_runtime":{"device":"/dev/spidev1.0","chip_select":0,"abi":1}})";
+    }
+    FILE* command = popen(("sha256sum " + dir + "/manifest").c_str(), "r");
+    char hex[65]{};
+    assert(command && fscanf(command, "%64[0-9a-f]", hex) == 1 && pclose(command) == 0);
+    return hex;
+}
+
 void Receipt(const std::string& digest, const std::string& image, unsigned mask)
 {
     std::ofstream out(dir + "/receipt");
@@ -127,7 +144,7 @@ extern "C" int __wrap_ioctl(int fd, unsigned long op, ...)
         } else {
             assert(op == SPIBONE_IOC_PEEK); // No write ioctl may reach the FPGA.
             auto* reg = va_arg(args, spibone_wb_xfer*);
-            const std::array values{0x57494e47u, 0x20000u, 0x12345678u, 0x0fu, 0x101u, resetMask, 0u, 0u};
+            const std::array values{0x57494e47u, 0x20000u, 0x12345678u, 0x7fu, 0x101u, resetMask, 0u, 0u};
             assert(reg->addr >= 0x1800 && reg->addr <= 0x181c && reg->addr % 4 == 0);
             reg->val = values[(reg->addr - 0x1800) / 4] ^ (reg->addr == changedCsr ? 1 : 0);
         }
@@ -203,20 +220,21 @@ int main(int argc, char** argv)
 {
     assert(argc == 4);
     dir = argv[1];
-    const std::string digest = argv[2], image = argv[3];
+    std::string digest = argv[2];
+    const std::string image = argv[3];
     Try(4, false, 0, 0, false); // No receipt.
     Receipt(digest, image, 0);
     Try(4, false, 0, 0, false);
     Receipt(digest, image, 8);
     Try(2, false, 0, 0, false);
     Try(3, false, 0, 0, false);
-    Receipt(digest, image, 12); // Reject the whole record, not merely DSP3.
+    Receipt(digest, image, 0x18); // Reject the whole record, not merely the unknown core.
     Try(4, false, 0, 0, false);
     Receipt(image, image, 8); // Hash mismatch.
     Try(4, false, 0, 0, false);
     Receipt(digest, std::string(64, '1'), 8); // Image mismatch.
     Try(4, false, 0, 0, false);
-    Receipt(digest, image, 0x0b);
+    Receipt(digest, image, 0x0f);
     const auto path = dir + "/receipt";
     assert(chmod(path.c_str(), 0644) == 0);
     Try(4, false, 0, 0, false);
@@ -228,15 +246,34 @@ int main(int argc, char** argv)
     nonBootLocal = true;
     Try(4, false, 0, 0, false);
     nonBootLocal = false;
-    resetMask = 0x0b;
+    // The loader leaves every reset released (0xf) between operations; anything else is a held core.
+    for (unsigned held : {0x0bu, 0x07u, 0u}) {
+        resetMask = held;
+        Try(4, false, 0, 0);
+    }
+    resetMask = 0x0f;
     offline = true;
     Try(4, false, 0, 0);
     offline = false;
     for (changedCsr = 0x1800; changedCsr <= 0x181c; changedCsr += 4) Try(4, false, 0, 0);
+    changedCsr = 0;
+    // Capabilities must include SPIBone, DSP runtime, Q4.28 and AES50 B; extra bits are fine.
+    const std::string profile = "1849b434f1c5a974d67a49795cff04ec26caa582a1336396ae022934aab9ee6a";
+    for (unsigned missing : {1u, 2u, 4u, 8u}) {
+        Receipt(Manifest(image, 0x7f & ~missing, profile), image, 0x0f);
+        Try(4, false, 0, 0, false);
+    }
+    // The superseded profile (no DSP3 reset, 12.288 MHz CLKIN) is not this board.
+    Receipt(Manifest(image, 0x7f, "3b29934cdc1c704de69b6b028bc71387ab7c50cb74e811fb35ca0f64664a3e9d"), image, 0x0f);
+    Try(4, false, 0, 0, false);
+    Receipt(Manifest(image, 0x0f, profile), image, 0x0f);
+    Try(4, false, 0, 0); // the live CSR (0x7f) must equal the manifest
+    digest = Manifest(image, 0x7f, profile);
+    Receipt(digest, image, 0x0f);
     noEntropy = true;
     Try(4, false, 0, 1);
     noEntropy = false;
-    for (auto core : {1u, 2u, 4u}) Try(core, true, 1, 1);
+    for (auto core : {1u, 2u, 3u, 4u}) Try(core, true, 1, 1);
     assert(identity.extended && identity.fault == 0 && identity.blocks == 1234 && identity.coreClockHz == coreClock);
     OMC::RequireWingDspAudioClock(identity);
     for (bad = Empty; bad <= Reserved; bad = static_cast<BadReply>(bad + 1)) Try(4, false, 1, 1);
@@ -271,7 +308,7 @@ int main(int argc, char** argv)
     bad = Good;
     Receipt(digest, image, 3); // Other qualified cores never substitute for DSP4.
     Try(4, false, 0, 0, false);
-    Receipt(digest, image, 0x0b);
+    Receipt(digest, image, 0x0f);
     for (float q : {1.f, std::numeric_limits<float>::quiet_NaN()}) {
         auto invalid = overdrive;
         invalid[1] = q;

@@ -39,7 +39,8 @@ constexpr int fakeSpi = 999, fakeBone = 998, fakeDsp = 997;
 constexpr uint32_t routeBase = 0x80000000;
 // Intentionally not the physical bootstrap offsets: consume the manifest, not constants.
 constexpr std::array<uint32_t, 5> identityAddresses{0x208, 0x20c, 0x210, 0x214, 0x218};
-constexpr std::array<uint32_t, 5> identityWords{0x57494e47, 0x20000, 0x01234567, 15, 1};
+constexpr std::array<uint32_t, 5> identityWords{0x57494e47, 0x20000, 0x01234567, 0x7f, 1};
+constexpr char boardProfile[] = "1849b434f1c5a974d67a49795cff04ec26caa582a1336396ae022934aab9ee6a";
 std::string fixture;
 
 enum class Fault { None, Magic, Abi, BuildId, Count, NotReady, NoAck, BadMarker, Short, IoError, Readback,
@@ -80,18 +81,19 @@ void Manifest(uint32_t abi = 65536, unsigned stride = 4, unsigned gpio = 59)
         << stride << "}]}";
 }
 
-void ProductionManifest(bool wdsp = false, unsigned selectorWidth = 10, unsigned tdmSlots = 16)
+void ProductionManifest(bool wdsp = false, unsigned selectorWidth = 10, unsigned tdmSlots = 16,
+                        const char* profile = boardProfile)
 {
     std::ofstream out(fixture + "/manifest");
     out << R"({"schema_version":2,"target":"wing-compact-t55f484-fork","device":"T55F484",
-      "abi_version":131072,"magic":1464421959,"build_id":19088743,"feature_flags":15,
+      "abi_version":131072,"magic":1464421959,"build_id":19088743,"feature_flags":127,
       "num_inputs":768,"num_outputs":768,"num_aes50_ports":1,"audio_data_width":32,
       "audio":{"audio_data_width":32,"sample_rate_hz":48000,"bclk_hz":24576000,
         "word_format":"signed Q4.28","slots":)" << tdmSlots << R"(},
       "transport":{"device":"/dev/spibone0","compatible":"openmixer,wing-spibone","chip_select":1,
         "mode":0,"max_hz":2000000},"routing":{"base":2147483648,"count":768,"stride":4,"off":0,
       "selector_width":)" << selectorWidth << "},\"source_sha256\":\"" << digest << "\",";
-    out << "\"dsp_board_profile_sha256\":\"" << digest << "\","
+    out << "\"dsp_board_profile_sha256\":\"" << profile << "\","
         << "\"bitstream\":{\"file\":\"wing-fpga.hex.bin\",\"sha256\":\"" << digest << "\"},\"csr_sha256\":{";
     out << "\"csr.csv\":\"" << digest << "\",\"csr.json\":\"" << digest
         << "\",\"software/include/generated/csr.h\":\"" << digest << "\"},";
@@ -104,7 +106,7 @@ void ProductionManifest(bool wdsp = false, unsigned selectorWidth = 10, unsigned
             if (i) out << ',';
             out << "{\"id\":" << exported[i] + shift;
             if (i == 0) out << R"(,"dsp":1,"slot_id":0)";
-            if (i == 2) out << R"(,"dsp":3,"slot_id":5)"; // exported, but DSP3 never boots
+            if (i == 2) out << R"(,"dsp":3,"slot_id":5)"; // routable only while DSP3 runs
             if (i == 3 || i == 4) out << R"(,"aes50":"B","channel":)" << (i == 3 ? 1 : 48);
             out << '}';
         }
@@ -347,6 +349,13 @@ int main()
     ProductionManifest(false, 9);
     ProductionReceipt();
     Fails("routing geometry", production);
+    // The superseded profile (no DSP3 reset, 12.288 MHz CLKIN) is not this board.
+    ProductionManifest(false, 10, 16, "3b29934cdc1c704de69b6b028bc71387ab7c50cb74e811fb35ca0f64664a3e9d");
+    ProductionReceipt();
+    Fails("unsupported WING manifest", production);
+    ProductionManifest(true);
+    ProductionReceipt(digest, {}, 0x10); // no DSP5
+    Fails("WDSP qualification", production);
     assert(boneOpens == 0 && peeks == 0 && pokes == 0 && dspOpens == 0 && opens == recoveryOpens);
 
     ProductionManifest();
@@ -385,8 +394,8 @@ int main()
             Fails("unavailable", [&] { loaded.SetRoute(unused, 0); });
         for (unsigned unused : {261, 308, 325, 421, 469, 768, 769})
             Fails("unavailable", [&] { loaded.SetRoute(308, unused); });
-        Fails("unavailable", [&] { loaded.SetRoute(309, 0); }); // DSP3 destination
-        Fails("unavailable", [&] { loaded.SetRoute(308, 310); }); // DSP3 source
+        Fails("unavailable", [&] { loaded.SetRoute(309, 0); }); // DSP3 destination, DSP3 not running
+        Fails("unavailable", [&] { loaded.SetRoute(308, 310); }); // DSP3 source, DSP3 not running
         Fails("only to T55 Recovery", [&] { loaded.SetConfig(1); });
         assert(pokes == 2 && peeks == ioBefore && dspOpens == 0);
         fault = Fault::Readback;
@@ -405,6 +414,16 @@ int main()
         const auto view = loaded.RoutingView();
         assert(view.find(R"("sources":[[373,5,1],[420,5,48]])") != std::string::npos);
         assert(view.find(R"("destinations":[[372,5,1],[419,5,48]])") != std::string::npos);
+    }
+    ProductionManifest(true);
+    ProductionReceipt(digest, {}, 0x0f); // all four cores running, DSP3 included
+    {
+        auto loaded = production();
+        loaded.SetRoute(309, 310); // DSP3 slot 5 back to itself
+        assert(destination == 309 && source == 310 && pokes == 4);
+        const auto view = loaded.RoutingView();
+        assert(view.find(R"("sources":[[1,1,1],[310,3,6],[373,5,1],[420,5,48]])") != std::string::npos);
+        assert(view.find(R"("destinations":[[0,1,1],[309,3,6],[372,5,1],[419,5,48]])") != std::string::npos);
     }
     assert(flock(lock, LOCK_EX | LOCK_NB) == 0 && flock(lock, LOCK_UN) == 0);
     close(lock);

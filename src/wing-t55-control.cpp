@@ -99,7 +99,7 @@ struct ProductionManifest {
     std::optional<DspRuntime> dsp_runtime;
 };
 
-// Bit n-1 of cores is DSPn. The loader's runtime mask never includes DSP3.
+// Bit n-1 of cores is DSPn. The loader's runtime mask lists the cores it booted.
 bool CoreLive(const ProductionManifest::Channels::Endpoint& e, unsigned cores)
 {
     return !e.dsp || (*e.dsp >= 1 && *e.dsp <= 4 && (cores >> (*e.dsp - 1) & 1));
@@ -366,6 +366,8 @@ void WingT55Control::OpenProduction(const std::string& manifestDigest, const std
     const auto manifest = LoadJson<ProductionManifest>(manifestPath, false, manifestDigest);
     constexpr uint32_t magic = 0x57494e47, abi = 0x00020000;
     constexpr uint32_t required = 0x0d; // SPIBone, DSP Q4.28 and physical AES50 B
+    // The stock-direction TDM16 profile with A9 as DSP3's reset and a 25 MHz CLKIN.
+    constexpr char boardProfile[] = "1849b434f1c5a974d67a49795cff04ec26caa582a1336396ae022934aab9ee6a";
     if (manifest.schema_version != 2 || manifest.target != "wing-compact-t55f484-fork" ||
         manifest.device != "T55F484" || manifest.magic != magic || manifest.abi_version != abi ||
         manifest.bitstream.file.empty() || manifest.bitstream.sha256 != imageDigest ||
@@ -376,7 +378,7 @@ void WingT55Control::OpenProduction(const std::string& manifestDigest, const std
         manifest.audio.slots != 16 || manifest.audio.audio_data_width != 32 ||
         manifest.audio.sample_rate_hz != 48000 || manifest.audio.bclk_hz != 24576000 ||
         manifest.audio.word_format != "signed Q4.28" ||
-        !IsDigest(manifest.dsp_board_profile_sha256))
+        manifest.dsp_board_profile_sha256 != boardProfile)
         throw std::runtime_error("unsupported WING manifest or loaded image mismatch");
     for (const auto* file : {"csr.csv", "csr.json", "software/include/generated/csr.h"}) {
         const auto entry = manifest.csr_sha256.find(file);
@@ -387,7 +389,7 @@ void WingT55Control::OpenProduction(const std::string& manifestDigest, const std
     if (transport.device != spiboneDevice || transport.compatible != "openmixer,wing-spibone" ||
         transport.chip_select != 1 || transport.mode != 0 || transport.max_hz != spiSpeed)
         throw std::runtime_error("invalid WING SPIBone manifest transport");
-    if ((mask & ~0x0bu) || (mask && (!(manifest.feature_flags & 2) || !manifest.dsp_runtime ||
+    if ((mask & ~0x0fu) || (mask && (!(manifest.feature_flags & 2) || !manifest.dsp_runtime ||
         manifest.dsp_runtime->device != dspDevice || manifest.dsp_runtime->chip_select != 0 ||
         manifest.dsp_runtime->abi != 1)))
         throw std::runtime_error("invalid WING WDSP qualification");

@@ -467,7 +467,7 @@ namespace OMC
 #ifdef TARGET_WING
 		unsigned wingDsp = 0;
 		auto* wingIdentify = app->add_option("--wing-dsp-identify", wingDsp,
-			"Identify one boot-qualified WING DSP (1, 2 or 4), then exit")->configurable(false);
+			"Identify one boot-qualified WING DSP (1-4), then exit")->configurable(false);
 		std::array<float, 6> overdrive{};
 		auto* wingSet = app->add_option("--wing-overdrive-set", overdrive,
 			"Set DSP4 pair 0: linear pregain, Q, bias, input HPF, input LPF, output LPF")->configurable(false);

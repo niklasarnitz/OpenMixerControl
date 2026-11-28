@@ -30,12 +30,13 @@ Linux and Custom Firmware for the Behringer WING Audio-Mixing-Consoles
 ### T55 bench DSP identification
 
 On a muted WING Compact running the matching OpenWING T55 loader and WDSP v1
-firmware, use `omc --wing-dsp-identify 4` (DSP 1, 2 or 4). This one-shot
+firmware, use `omc --wing-dsp-identify 4` (DSP 1–4). This one-shot
 command exits before mixer startup. It requires the loader's boot-local,
-per-core qualification record, matching live FPGA identity and reset readback,
-and FS and return-valid both off. A successful Identify means SPORT is armed,
-not that audio is valid. DSP3, X32 probing, boot/reset and audio enable are
-outside this command's scope.
+per-core qualification record, matching live FPGA identity, all four DSP
+resets released (`wing_dsp_reset_release` reads `0xf` between loader
+operations), and FS and return-valid both off. A successful Identify means
+SPORT is armed, not that audio is valid. X32 probing, boot/reset and audio
+enable are outside this command's scope.
 
 WDSP v1.1 firmware also reports its block count and the CCLK it measured over
 one second of FS; a faulted core reports why (deadline, SPORT overflow or lane
@@ -90,8 +91,12 @@ development package for device-mocked verification.
 
 Build with `./compile.sh TARGET_WING` on Debian 13 with the `arm-linux-gnueabihf`
 toolchain. The static executable is `build/wing/omc`. Package it with
-`transport=spibone`, the SHA-256 of `src/spibone_uapi.h` and the matching
-`dsp_board_profile_sha256` in OpenWING's OMC provenance.
+`transport=spibone`, the SHA-256 of `src/spibone_uapi.h` and
+`dsp_board_profile_sha256` `1849b434…` (A9 as DSP3's reset, 25 MHz CLKIN) in
+OpenWING's OMC provenance. OMC refuses a manifest that binds another board
+profile. It requires the capability bits it uses (SPIBone, Q4.28 audio and
+AES50 B, plus the DSP runtime for WDSP and DSP routes), not an exact mask; the
+stock-matched image reports `0x7f`, and the live register must match the manifest.
 
 `wing-t55 check` verifies fabric readiness; `wing-t55 run` starts the local UI
 server. OMC requires the loader's boot-local receipt, shared loader lock,
@@ -102,8 +107,8 @@ The separate WDSP bench commands above are unchanged.
 An operator can set one route with `omc --wing-t55-loaded /run/omc-wing-fpga.json
 --wing-t55-route DEST SOURCE`. Use the zero-based manifest destination and the
 native source selector (`0` is OFF). OMC checks exported endpoint IDs, rejects
-DSP endpoints of cores outside the receipt's `dsp_runtime_mask` (DSP3 never
-boots) and reads the selector back after writing; it never retries an uncertain write. Routes
+DSP endpoints of cores outside the receipt's `dsp_runtime_mask` (the cores the
+loader booted) and reads the selector back after writing; it never retries an uncertain write. Routes
 are not part of scenes. Raw SPI and `--wing-t55-config` require explicit
 `--wing-t55-recovery` and a matching schema-1 Recovery receipt; there is no fallback.
 

@@ -32,8 +32,12 @@ namespace {
 constexpr char manifestPath[] = "/usr/share/wing-t55/manifest.json";
 constexpr char controlDevice[] = "/dev/spibone0";
 constexpr char dspDevice[] = "/dev/spidev1.0";
-constexpr uint32_t coreMask = 0x0b; // DSP3/A9 is not qualified for reset.
-constexpr uint32_t magic = 0x57494e47, fabricAbi = 0x00020000, capabilities = 0x0f;
+// DSP1-4. Between loader operations wing_dsp_reset_release reads all four released.
+constexpr uint32_t coreMask = 0x0f;
+// SPIBone, DSP runtime, Q4.28 audio and physical AES50 B; later bits only append registers.
+constexpr uint32_t magic = 0x57494e47, fabricAbi = 0x00020000, requiredCapabilities = 0x0f;
+// The stock-direction TDM16 profile with A9 as DSP3's reset and a 25 MHz CLKIN.
+constexpr char boardProfile[] = "1849b434f1c5a974d67a49795cff04ec26caa582a1336396ae022934aab9ee6a";
 constexpr uint32_t dspSpeed = 10000;
 
 struct Fd {
@@ -55,7 +59,7 @@ struct Receipt {
 
 struct Manifest {
     uint32_t schema_version, abi_version, magic, build_id, feature_flags;
-    std::string target, device;
+    std::string target, device, dsp_board_profile_sha256;
     struct Bitstream { std::string sha256; } bitstream;
     struct Transport {
         std::string device, compatible;
@@ -146,7 +150,7 @@ uint32_t ReadCsr(int fd, uint32_t address)
 }
 
 // The T55 ABI fixes these addresses; the manifest cannot redirect a read.
-void CheckFabric(int fd, const Receipt& receipt)
+void CheckFabric(int fd, const Receipt& receipt, uint32_t capabilities)
 {
     uint32_t state = 0;
     Require(ioctl(fd, SPIBONE_IOC_GET_STATE, &state) == 0 && state == SPIBONE_STATE_ONLINE,
@@ -154,9 +158,10 @@ void CheckFabric(int fd, const Receipt& receipt)
     Require(ReadCsr(fd, 0x1800) == magic && ReadCsr(fd, 0x1804) == fabricAbi &&
             ReadCsr(fd, 0x1808) == receipt.build_id && ReadCsr(fd, 0x180c) == capabilities &&
             (ReadCsr(fd, 0x1810) & 1), "live WING FPGA identity or fabric-ready mismatch");
-    Require(ReadCsr(fd, 0x1814) == receipt.dsp_runtime_mask &&
+    // A failed boot holds its core in reset and leaves no receipt; never talk past that.
+    Require(ReadCsr(fd, 0x1814) == coreMask &&
             ReadCsr(fd, 0x1818) == 0 && ReadCsr(fd, 0x181c) == 0,
-            "live WING reset mask mismatch or FS/VALID enabled");
+            "live WING DSP held in reset or FS/VALID enabled");
 }
 
 void PutWord(uint8_t* out, uint32_t word)
@@ -207,7 +212,9 @@ public:
         Require(Sha256(bytes) == receipt.manifest_sha256, "WING manifest digest mismatch");
         const auto m = Parse<Manifest>(bytes);
         Require(m.schema_version == 2 && m.abi_version == fabricAbi && m.magic == magic &&
-                m.feature_flags == capabilities && m.target == "wing-compact-t55f484-fork" && m.device == "T55F484" &&
+                (m.feature_flags & requiredCapabilities) == requiredCapabilities &&
+                m.dsp_board_profile_sha256 == boardProfile &&
+                m.target == "wing-compact-t55f484-fork" && m.device == "T55F484" &&
                 m.build_id == receipt.build_id && m.bitstream.sha256 == receipt.bitstream_sha256 &&
                 m.transport.device == controlDevice && m.transport.compatible == "openmixer,wing-spibone" &&
                 m.transport.chip_select == 1 && m.transport.mode == 0 && m.transport.max_hz == 2000000 &&
@@ -215,7 +222,7 @@ public:
                 "incompatible WING manifest or boot record");
 
         Fd control(open(controlDevice, O_RDWR | O_NOFOLLOW | O_CLOEXEC));
-        CheckFabric(control.value, receipt);
+        CheckFabric(control.value, receipt, m.feature_flags);
         Fd dsp(open(dspDevice, O_RDWR | O_NOFOLLOW | O_CLOEXEC));
         uint32_t mode = SPI_MODE_0, speed = dspSpeed;
         uint8_t bits = 8;
@@ -225,7 +232,7 @@ public:
         const auto identity = Command(dsp.value, Operation::Identify, nullptr);
         if (op != Operation::Identify) {
             // Identify can succeed just before the FPGA goes offline; recheck before writing.
-            CheckFabric(control.value, receipt);
+            CheckFabric(control.value, receipt, m.feature_flags);
             Command(dsp.value, op, values);
         }
         return identity;
