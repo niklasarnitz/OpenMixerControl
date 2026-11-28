@@ -130,6 +130,11 @@ namespace OMC
             config->oscCapabilities.insert("recorder_xlive_transport");
         }
         config->oscCapabilities.insert("surface_subscription");
+        if (!config->IsModelAnyWing())
+        {
+            // as PageEq::Supports1084: DSP1 runs the 1084 on X32, WING has no DSP path for it
+            config->oscCapabilities.insert("channel_eq_1084");
+        }
         if (config->IsModelAnyWing())
         {
             // display + SELECT encoder turns are only forwarded; the client applies them
