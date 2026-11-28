@@ -53,8 +53,10 @@
 #include "wing-wdsp.h"
 #ifdef TARGET_WING
 #include "wing-t55-control.h"
+#include "wing-local-io.h"
 #include "osc-server.h"
 #include <poll.h>
+#include <unistd.h>
 #endif
 
 #define DOCTEST_CONFIG_IMPLEMENT // we start doctest within our own main()
@@ -371,6 +373,10 @@ namespace OMC
 		std::string wingReceipt;
 		std::unique_ptr<WingT55Control> wingT55;
 		std::vector<uint32_t> wingRoute;
+		std::vector<std::string> wingGains;
+		auto* wingHa = app->add_option("--wing-headamps", wingGains,
+			"Apply all 24 LOCAL IN gains in jack order (-2.5..45 dB, append :48V for phantom)")
+			->expected(24)->configurable(false);
 		uint32_t wingConfig = 0;
 		auto* receiptOpt = app->add_option("--wing-t55-loaded", wingReceipt,
 			"Check WING Compact T55 fabric using the trusted loader receipt, then exit")
@@ -481,6 +487,16 @@ namespace OMC
 		CLI11_PARSE(*app, argc, argv);
 
 #ifdef TARGET_WING
+		if (*wingHa) {
+			if (argc != 26) { fprintf(stderr, "--wing-headamps requires 24 settings and no other options\n"); return 1; }
+			try {
+				const auto payload = WingLocalIo::HeadampPayload(wingGains);
+				// The loader owns the lock, identity checks and SS3 transaction.
+				execl("/usr/bin/wing-t55", "wing-t55", "ha-write", payload.c_str(), (char*)nullptr);
+				perror("/usr/bin/wing-t55");
+			} catch (const std::exception& e) { fprintf(stderr, "%s\n", e.what()); }
+			return 1;
+		}
 		if (*wingIdentify) {
 			try {
 				const auto identity = IdentifyWingDsp(wingDsp);

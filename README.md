@@ -123,9 +123,19 @@ can serve the installed catalog but never opens a device.
 
 `local_io` catalogs stock Compact ADC/DAC pads and slots (24 LOCAL IN, eight
 LOCAL OUT, AUX OUT 7/8). Stock AE IDs are references, not T55 selectors or
-verified jack numbers. The offline encoder updates a 27-byte head-amp image;
-it has no runtime caller or verified dB conversion. Current gateware has no
-ADDA transport.
+replacement-fabric selectors. On the ADDA fabric, native sources 469–492 are
+LOCAL IN 1–24; destinations 468–475 are LOCAL OUT 1–8 and 476/477 feed the
+two phones sockets (AUX OUT 7/8). Use the native route command above.
+
+After `wing-t55 adda-init`, `omc --wing-headamps` takes **24** gain settings
+in physical input order. Each is −2.5 to 45 dB in 2.5 dB steps (use ASCII
+`-` for negative values); `0` is unity. Append `:48V` only to settings that
+need phantom power. No suffix means phantom off. Supply all 24 explicitly:
+the shift chain has no readback, so OMC cannot preserve omitted channels.
+OMC validates and encodes the whole image before handing it to `wing-t55
+ha-write`, which owns the loader lock and verified SS3 transfer. Run this
+standalone with the live routing server stopped. It never unmutes the DACs.
+The loopback OSC view remains read-only for analog controls.
 
 The UAPI is from [Mala's SPIBone driver](https://github.com/malarisch/OpenAudioFPGA/commit/7d2869acdcff4a0a1952b74bf9b5fe45e37ff7dd)
 plus the OpenWING loader's `WING_ENABLE` ioctl definition. Register access follows

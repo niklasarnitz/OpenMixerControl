@@ -54,6 +54,8 @@ def check(sock):
     assert topology["sources"] == topology["outputs"] == []
     io = topology["local_io"]
     assert not io["transport_available"] and len(io["inputs"]) == 24 and len(io["outputs"]) == 10
+    assert [i["adda_source"] for i in io["inputs"]] == list(range(469, 493))
+    assert [o["adda_destination"] for o in io["outputs"]] == list(range(468, 478))
     assert io["inputs"][16]["stock_ae_source"] == 0
     assert io["outputs"][-1]["name"] == "AUX OUT 8"
 

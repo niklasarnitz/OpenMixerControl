@@ -2,6 +2,9 @@
 
 #ifdef TARGET_WING
 #include <iterator>
+#include <charconv>
+#include <cmath>
+#include <stdexcept>
 
 namespace OMC::WingLocalIo {
 namespace {
@@ -68,10 +71,32 @@ bool EncodeHeadamp(HeadampImage& image, unsigned ha, unsigned step, bool phantom
     return true;
 }
 
+std::string HeadampPayload(std::span<const std::string> gains)
+{
+    if (gains.size() != std::size(haBits)) throw std::invalid_argument("expected 24 LOCAL IN gains");
+    HeadampImage image{};
+    for (unsigned i = 0; i < gains.size(); ++i) {
+        std::string_view field = gains[i];
+        bool phantom = field.ends_with(":48V");
+        if (phantom) field.remove_suffix(4);
+        double db = 0;
+        const auto end = field.data() + field.size();
+        const auto result = std::from_chars(field.data(), end, db);
+        if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(db) ||
+            db < -2.5 || db > 45 || std::fmod(db, 2.5) != 0)
+            throw std::invalid_argument("invalid gain or phantom setting for LOCAL IN " + std::to_string(i + 1));
+        EncodeHeadamp(image, i, static_cast<unsigned>(db / 2.5 + 1), phantom);
+    }
+    constexpr char hex[] = "0123456789abcdef";
+    std::string payload;
+    for (auto byte : image) { payload += hex[byte >> 4]; payload += hex[byte & 15]; }
+    return payload;
+}
+
 const std::string& ReferenceJson()
 {
     static const auto json = [] {
-        std::string out = R"({"transport_available":false,"reason":"Current gateware has no ADDA transport","requires":"ADDA gateware (clocks, lanes and control CSRs), kernel SS3 and verified codec init","gain_step_max":)";
+        std::string out = R"({"transport_available":false,"reason":"Headamp writes are not exposed over OSC","requires":"wing-t55 adda-init and the OMC headamp command","gain_step_max":)";
         out += std::to_string(std::size(gainCode) - 1);
         out += R"(,"inputs":[)";
         const auto lane = [&](const Lane& l, unsigned slot) {
@@ -80,6 +105,7 @@ const std::string& ReferenceJson()
         for (unsigned ha = 0; ha < std::size(haBits); ++ha) {
             if (ha) out += ',';
             out += R"({"name":"LOCAL IN )" + std::to_string(ha + 1) + R"(","ha_index":)" + std::to_string(ha)
+                + R"(,"adda_source":)" + std::to_string(469 + ha)
                 + R"(,"stock_ae_source":)" + std::to_string(ha < 16 ? 0x1f0 + ha : ha - 16);
             lane(adc[ha / 8], ha % 8);
         }
@@ -89,7 +115,7 @@ const std::string& ReferenceJson()
             const bool aux = i >= 8;
             out += (aux ? R"({"name":"AUX OUT )" : R"({"name":"LOCAL OUT )")
                 + std::to_string(aux ? 7 + (i - 8) : 1 + i) + R"(","stock_router_destination":)"
-                + std::to_string(aux ? 0x1ee + (i - 8) : 0x1e0 + i);
+                + std::to_string(aux ? 0x1ee + (i - 8) : 0x1e0 + i) + R"(,"adda_destination":)" + std::to_string(468 + i);
             lane(dac[i / 2], i % 2);
         }
         return out + "]}";

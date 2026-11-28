@@ -3,6 +3,7 @@
 #include <charconv>
 #include <string_view>
 #include <tuple>
+#include <stdexcept>
 
 using namespace OMC::WingLocalIo;
 
@@ -32,6 +33,14 @@ int main()
         auto image = off;
         assert(EncodeHeadamp(image, ha, step, phantom));
         assert(image == Hex(expected));
+        std::array<std::string, 24> gains;
+        gains.fill("-2.5");
+        gains[ha] = std::to_string((step - 1) * 2.5) + (phantom ? ":48V" : "");
+        assert(HeadampPayload(gains) == expected);
+        for (const auto invalid : {"-5", "47.5", "2.6", "nan", "10:48", "10:48Vx"}) {
+            gains[ha] = invalid;
+            try { HeadampPayload(gains); assert(false); } catch (const std::invalid_argument&) {}
+        }
         assert(!EncodeHeadamp(image, 24, step, phantom));
         assert(!EncodeHeadamp(image, ha, 20, phantom));
         assert(image == Hex(expected));
