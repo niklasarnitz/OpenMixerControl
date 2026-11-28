@@ -99,7 +99,14 @@ struct ProductionManifest {
     std::optional<DspRuntime> dsp_runtime;
 };
 
-std::string RouteCatalog(const ProductionManifest& manifest,
+// Bit n-1 of cores is DSPn. The loader's runtime mask never includes DSP3.
+bool CoreLive(const ProductionManifest::Channels::Endpoint& e, unsigned cores)
+{
+    return !e.dsp || (*e.dsp >= 1 && *e.dsp <= 4 && (cores >> (*e.dsp - 1) & 1));
+}
+
+// Lists DSP endpoints only for the given cores.
+std::string RouteCatalog(const ProductionManifest& manifest, unsigned cores,
                          std::vector<uint32_t>& sources, std::vector<uint32_t>& destinations)
 {
     std::string json = "{\"build\":" + std::to_string(manifest.build_id);
@@ -108,7 +115,7 @@ std::string RouteCatalog(const ProductionManifest& manifest,
         std::bitset<WingT55Control::ProductionRoutes + 1> used;
         for (const auto& e : endpoints) {
             unsigned group, channel;
-            if (e.dsp && *e.dsp >= 1 && *e.dsp <= 4 && !e.aes50 && e.slot_id && *e.slot_id < 768) {
+            if (e.dsp && *e.dsp >= 1 && *e.dsp <= 4 && !e.aes50 && e.slot_id && *e.slot_id < 768 && CoreLive(e, cores)) {
                 group = *e.dsp;
                 channel = *e.slot_id + 1;
             } else if (!e.dsp && e.aes50 == "B" && e.channel && *e.channel >= 1 && *e.channel <= 48) {
@@ -391,17 +398,22 @@ void WingT55Control::OpenProduction(const std::string& manifestDigest, const std
         route.count != manifest.num_outputs || route.stride != 4 || route.selector_width != 10 ||
         route.off != 0 || route.base % 4 || end > (uint64_t{1} << 32))
         throw std::runtime_error("invalid WING routing geometry");
-    // Capacity is not availability. The generated image map omits A/C and reserved slots.
+    // Capacity is not availability. The generated image map omits A/C and reserved slots,
+    // and a DSP endpoint is only usable while the loader keeps its core running.
+    std::bitset<ProductionRoutes + 1> sourceIds;
+    std::bitset<ProductionRoutes> destinationIds;
     reachableSources.set(0); // OFF
-    for (const auto& [id, dsp, slot, channel, aes50] : manifest.channels.sources) {
-        if (id > manifest.num_inputs || reachableSources.test(id))
+    for (const auto& e : manifest.channels.sources) {
+        if (e.id > manifest.num_inputs || e.id == 0 || sourceIds.test(e.id))
             throw std::runtime_error("invalid WING source map");
-        reachableSources.set(id);
+        sourceIds.set(e.id);
+        reachableSources.set(e.id, CoreLive(e, mask));
     }
-    for (const auto& [id, dsp, slot, channel, aes50] : manifest.channels.destinations) {
-        if (id >= manifest.num_outputs || reachableDestinations.test(id))
+    for (const auto& e : manifest.channels.destinations) {
+        if (e.id >= manifest.num_outputs || destinationIds.test(e.id))
             throw std::runtime_error("invalid WING destination map");
-        reachableDestinations.set(id);
+        destinationIds.set(e.id);
+        reachableDestinations.set(e.id, CoreLive(e, mask));
     }
     if (manifest.channels.sources.empty() || manifest.channels.destinations.empty())
         throw std::runtime_error("missing WING route endpoints");
@@ -430,7 +442,7 @@ void WingT55Control::OpenProduction(const std::string& manifestDigest, const std
     routeStride = route.stride;
     buildAddress = addresses[2];
     statusAddress = addresses.back();
-    routeCatalog = RouteCatalog(manifest, viewSources, viewDestinations);
+    routeCatalog = RouteCatalog(manifest, mask, viewSources, viewDestinations);
 }
 
 std::string WingT55Control::OfflineRoutingView()
@@ -440,7 +452,7 @@ std::string WingT55Control::OfflineRoutingView()
         const auto manifest = LoadJson<ProductionManifest>(manifestPath, false);
         if (manifest.schema_version == 2 && manifest.target == "wing-compact-t55f484-fork") {
             std::vector<uint32_t> sources, destinations;
-            return RouteCatalog(manifest, sources, destinations) + ",\"status\":\"offline\"}";
+            return RouteCatalog(manifest, 0x0f, sources, destinations) + ",\"status\":\"offline\"}";
         }
     } catch (const std::exception&) {} // No catalog installed; do not probe a device.
     return R"({"status":"no_catalog"})";

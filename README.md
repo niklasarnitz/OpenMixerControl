@@ -95,8 +95,9 @@ The separate WDSP bench commands above are unchanged.
 
 An operator can set one route with `omc --wing-t55-loaded /run/omc-wing-fpga.json
 --wing-t55-route DEST SOURCE`. Use the zero-based manifest destination and the
-native source selector (`0` is OFF). OMC checks exported endpoint IDs and reads
-the selector back after writing; it never retries an uncertain write. Routes
+native source selector (`0` is OFF). OMC checks exported endpoint IDs, rejects
+DSP endpoints of cores outside the receipt's `dsp_runtime_mask` (DSP3 never
+boots) and reads the selector back after writing; it never retries an uncertain write. Routes
 are not part of scenes. Raw SPI and `--wing-t55-config` require explicit
 `--wing-t55-recovery` and a matching schema-1 Recovery receipt; there is no fallback.
 

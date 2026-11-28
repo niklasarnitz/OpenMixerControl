@@ -104,6 +104,7 @@ void ProductionManifest(bool wdsp = false, unsigned selectorWidth = 10, unsigned
             if (i) out << ',';
             out << "{\"id\":" << exported[i] + shift;
             if (i == 0) out << R"(,"dsp":1,"slot_id":0)";
+            if (i == 2) out << R"(,"dsp":3,"slot_id":5)"; // exported, but DSP3 never boots
             if (i == 3 || i == 4) out << R"(,"aes50":"B","channel":)" << (i == 3 ? 1 : 48);
             out << '}';
         }
@@ -360,6 +361,8 @@ int main()
         assert(pokes == 0 && dspOpens == 0 && opens == recoveryOpens);
     }
     fault = Fault::None;
+    ProductionManifest(true);
+    ProductionReceipt(digest, {}, 1); // DSP1 running
     {
         auto loaded = production();
         assert(flock(lock, LOCK_EX | LOCK_NB) < 0 && errno == EWOULDBLOCK);
@@ -382,6 +385,8 @@ int main()
             Fails("unavailable", [&] { loaded.SetRoute(unused, 0); });
         for (unsigned unused : {261, 308, 325, 421, 469, 768, 769})
             Fails("unavailable", [&] { loaded.SetRoute(308, unused); });
+        Fails("unavailable", [&] { loaded.SetRoute(309, 0); }); // DSP3 destination
+        Fails("unavailable", [&] { loaded.SetRoute(308, 310); }); // DSP3 source
         Fails("only to T55 Recovery", [&] { loaded.SetConfig(1); });
         assert(pokes == 2 && peeks == ioBefore && dspOpens == 0);
         fault = Fault::Readback;
@@ -389,6 +394,17 @@ int main()
         fault = Fault::None;
         Fails("writes disabled", [&] { loaded.SetRoute(308, 1); });
         assert(pokes == 3);
+    }
+    ProductionManifest(true);
+    ProductionReceipt(digest, {}, 2); // only DSP2 running: DSP1 endpoints are unavailable
+    {
+        auto loaded = production();
+        Fails("unavailable", [&] { loaded.SetRoute(0, 0); });
+        Fails("unavailable", [&] { loaded.SetRoute(308, 1); });
+        assert(pokes == 3);
+        const auto view = loaded.RoutingView();
+        assert(view.find(R"("sources":[[373,5,1],[420,5,48]])") != std::string::npos);
+        assert(view.find(R"("destinations":[[372,5,1],[419,5,48]])") != std::string::npos);
     }
     assert(flock(lock, LOCK_EX | LOCK_NB) == 0 && flock(lock, LOCK_UN) == 0);
     close(lock);
