@@ -162,7 +162,7 @@ class PageEq: public Page {
                 {CHANNEL_EQ1084_HP_FREQ, objects.eq1084__hp_freq_scale, objects.eq1084__hp_freq_needle, objects.eq1084__hp_freq_value, false},
                 {CHANNEL_EQ1084_LP_FREQ, objects.eq1084__lp_freq_scale, objects.eq1084__lp_freq_needle, objects.eq1084__lp_freq_value, false},
             };
-            static_assert(std::size(dials) == std::size(eq1084Needles));
+            static_assert(std::size(dials) == std::extent_v<decltype(eq1084Needles)>);
             for (size_t i = 0; i < std::size(dials); ++i)
             {
                 const auto& dial = dials[i];
